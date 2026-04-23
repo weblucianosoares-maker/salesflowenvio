@@ -19,63 +19,96 @@ export function ImportCenter() {
 
     try {
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data, { type: 'array' });
+      let workbook;
+      
+      // Better CSV handling: check if it's a CSV and try to detect delimiter
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        const text = new TextDecoder().decode(data);
+        // Basic delimiter detection: check if there are more ; than ,
+        const commaCount = (text.match(/,/g) || []).length;
+        const semiCount = (text.match(/;/g) || []).length;
+        const delimiter = semiCount > commaCount ? ';' : ',';
+        
+        workbook = XLSX.read(data, { type: 'array', FS: delimiter });
+      } else {
+        workbook = XLSX.read(data, { type: 'array' });
+      }
+
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
 
-      const allMappedLeads = jsonData.map(row => ({
-        cnpj: String(row['CNPJ'] || '').replace(/\D/g, ''), // Clean CNPJ
-        company_name: row['Razão'],
-        name: row['Razão'] || row['Fantasia'] || 'Sem Nome',
-        trading_name: row['Fantasia'],
-        lead_type: row['Tipo'],
-        address_street: row['Endereço'],
-        address_number: String(row['Número'] || ''),
-        address_complement: row['Complemento'],
-        address_neighborhood: row['Bairro'],
-        address_city: row['Cidade'],
-        address_state: row['UF'],
-        ibge_code: String(row['Cód. IBGE'] || ''),
-        address_zip: String(row['CEP'] || ''),
-        phone: String(row['Telefone 1'] || ''),
-        secondary_phone: String(row['Telefone 2'] || ''),
-        email: row['E-mail'],
-        website: row['Site'],
-        cnae: row['CNAE Principal'],
-        cnae_text: row['Texto CNAE Principal'],
-        cnae_secondary: row['CNAE Secundário'],
-        matrix_branch: row['Matriz/Filial'],
-        federal_entity: row['Ente Federativo'],
-        registration_status: row['Situação Cad.'],
-        registration_status_date: row['Data Situação Cad.'],
-        legal_nature: row['Natureza Jurídica'],
-        opening_date: row['Data Início Atv.'],
-        is_mei: String(row['Opção pelo MEI']).toLowerCase().includes('sim'),
-        mei_entry_date: row['Data entrada MEI'],
-        mei_exit_date: row['Data exclusão MEI'],
-        special_programs: row['Programas Especiais'],
-        company_size: row['Porte Empresa'],
-        tax_regime: row['Regime Tributário'],
-        simples_entry_date: row['Data Opção Simples'],
-        simples_exit_date: row['Data Exclusão Simples'],
-        share_capital: Number(row['Capital Social da Empresa'] || 0),
-        first_partner_id: row['Identificador 1º Sócio'],
-        partner_name: row['Nome do Sócio'],
-        age_range: row['Faixa Etária'],
-        partner_cpf_cnpj: row['CPF/CNPJ do Sócio'],
-        qualification: row['Qualificação'],
-        entry_date: row['Data da Entrada'],
-        estimated_revenue: Number(row['Faturamento Estimado'] || 0),
-        employee_count: Number(row['Quadro de Funcionários'] || 0),
-        active_federal_debts: row['Dívidas Federais Ativas'],
-        total_debts: Number(row['Total Dívidas'] || 0),
-        status: 'Novo',
-        source: 'Importação Manual'
-      })).filter(lead => lead.cnpj && lead.cnpj.length >= 14);
+      if (jsonData.length === 0) {
+        throw new Error('O arquivo está vazio ou o formato não é suportado.');
+      }
+
+      // Process mapping in smaller chunks to avoid freezing the main thread
+      const allMappedLeads: any[] = [];
+      const CHUNK_SIZE_PROCESSING = 500;
+      
+      for (let i = 0; i < jsonData.length; i += CHUNK_SIZE_PROCESSING) {
+        const chunk = jsonData.slice(i, i + CHUNK_SIZE_PROCESSING);
+        const mappedChunk = chunk.map(row => ({
+          cnpj: String(row['CNPJ'] || row['cnpj'] || '').replace(/\D/g, ''),
+          company_name: row['Razão'] || row['Razão Social'] || row['Nome'],
+          name: row['Razão'] || row['Razão Social'] || row['Fantasia'] || row['Nome'] || 'Sem Nome',
+          trading_name: row['Fantasia'] || row['Nome Fantasia'],
+          lead_type: row['Tipo'],
+          address_street: row['Endereço'] || row['Logradouro'],
+          address_number: String(row['Número'] || ''),
+          address_complement: row['Complemento'],
+          address_neighborhood: row['Bairro'],
+          address_city: row['Cidade'] || row['Município'],
+          address_state: row['UF'] || row['Estado'],
+          ibge_code: String(row['Cód. IBGE'] || ''),
+          address_zip: String(row['CEP'] || ''),
+          phone: String(row['Telefone 1'] || row['Telefone'] || row['Celular'] || ''),
+          secondary_phone: String(row['Telefone 2'] || ''),
+          email: row['E-mail'] || row['Email'],
+          website: row['Site'] || row['Website'],
+          cnae: row['CNAE Principal'] || row['CNAE'],
+          cnae_text: row['Texto CNAE Principal'],
+          cnae_secondary: row['CNAE Secundário'],
+          matrix_branch: row['Matriz/Filial'],
+          federal_entity: row['Ente Federativo'],
+          registration_status: row['Situação Cad.'] || row['Situação'],
+          registration_status_date: row['Data Situação Cad.'],
+          legal_nature: row['Natureza Jurídica'],
+          opening_date: row['Data Início Atv.'] || row['Data de Abertura'],
+          is_mei: String(row['Opção pelo MEI'] || '').toLowerCase().includes('sim'),
+          mei_entry_date: row['Data entrada MEI'],
+          mei_exit_date: row['Data exclusão MEI'],
+          special_programs: row['Programas Especiais'],
+          company_size: row['Porte Empresa'] || row['Porte'],
+          tax_regime: row['Regime Tributário'],
+          simples_entry_date: row['Data Opção Simples'],
+          simples_exit_date: row['Data Exclusão Simples'],
+          share_capital: Number(row['Capital Social da Empresa'] || row['Capital Social'] || 0),
+          first_partner_id: row['Identificador 1º Sócio'],
+          partner_name: row['Nome do Sócio'],
+          age_range: row['Faixa Etária'],
+          partner_cpf_cnpj: row['CPF/CNPJ do Sócio'],
+          qualification: row['Qualificação'],
+          entry_date: row['Data da Entrada'],
+          estimated_revenue: Number(row['Faturamento Estimado'] || 0),
+          employee_count: Number(row['Quadro de Funcionários'] || 0),
+          active_federal_debts: row['Dívidas Federais Ativas'],
+          total_debts: Number(row['Total Dívidas'] || 0),
+          status: 'Novo',
+          source: 'Importação Manual'
+        })).filter(lead => lead.cnpj && lead.cnpj.length >= 14);
+        
+        allMappedLeads.push(...mappedChunk);
+        // Yield control to the browser
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+
+      if (allMappedLeads.length === 0) {
+        throw new Error('Nenhum lead válido (com CNPJ) foi encontrado no arquivo.');
+      }
 
       setProgress({ current: 0, total: allMappedLeads.length });
 
-      // Batch processing: 100 leads at a time
+      // Batch processing for Supabase: 100 leads at a time
       const BATCH_SIZE = 100;
       for (let i = 0; i < allMappedLeads.length; i += BATCH_SIZE) {
         const chunk = allMappedLeads.slice(i, i + BATCH_SIZE);
@@ -86,7 +119,11 @@ export function ImportCenter() {
 
         if (error) throw error;
         
-        setProgress(prev => ({ ...prev, current: Math.min(i + BATCH_SIZE, allMappedLeads.length) }));
+        const currentProgress = Math.min(i + BATCH_SIZE, allMappedLeads.length);
+        setProgress({ current: currentProgress, total: allMappedLeads.length });
+        
+        // Add a small delay to keep the UI responsive and animate properly
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
 
       setImportStatus({ 
@@ -97,7 +134,7 @@ export function ImportCenter() {
       console.error('Erro na importação:', error);
       setImportStatus({ 
         type: 'error', 
-        message: 'Falha ao processar o arquivo. Verifique o formato e as colunas.' 
+        message: error.message || 'Falha ao processar o arquivo. Verifique o formato e as colunas.' 
       });
     } finally {
       setIsImporting(false);
