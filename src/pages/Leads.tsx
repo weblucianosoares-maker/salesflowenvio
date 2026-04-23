@@ -292,7 +292,7 @@ export function Leads() {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {leads.map((lead) => (
-                  <tr key={lead.id} className="group hover:bg-white/[0.03] transition-colors cursor-pointer">
+                  <tr key={lead.id} onClick={() => setSelectedLead(lead)} className="group hover:bg-white/[0.03] transition-colors cursor-pointer">
                     <td className="px-8 py-5">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-primary font-bold group-hover:scale-110 transition-transform">
