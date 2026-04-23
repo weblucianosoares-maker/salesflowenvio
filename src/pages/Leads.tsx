@@ -156,7 +156,14 @@ export function Leads() {
         activity_start_date: data.data_inicio_atividade,
         legal_nature: data.natureza_juridica,
         capital_social: data.capital_social,
-        tax_regime: data.opcao_pelo_simples ? (data.opcao_pelo_mei ? 'MEI' : 'Simples Nacional') : 'Lucro Presumido/Real'
+        tax_regime: data.opcao_pelo_simples ? (data.opcao_pelo_mei ? 'MEI' : 'Simples Nacional') : 'Lucro Presumido/Real',
+        // Dados do 1º Sócio (QSA)
+        partner_id: data.qsa?.[0]?.identificador_de_socio,
+        partner_name: data.qsa?.[0]?.nome_socio,
+        partner_age_range: data.qsa?.[0]?.faixa_etaria,
+        partner_cpf_cnpj: data.qsa?.[0]?.cnpj_cpf_do_socio,
+        partner_qualification: data.qsa?.[0]?.qualificacao_socio,
+        partner_entry_date: data.qsa?.[0]?.data_entrada_sociedade
       };
 
       const { error } = await supabase
@@ -569,17 +576,50 @@ export function Leads() {
 
                 <div className="glass p-8 rounded-3xl">
                   <h3 className="text-lg font-bold mb-6 flex items-center gap-3">
-                    <Globe className="text-primary" />
-                    Situação Cadastral
+                    <Briefcase className="text-primary" />
+                    Quadro de Sócios (QSA)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-8 gap-x-12">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Nome do 1º Sócio</p>
+                      <p className="text-sm font-medium text-white">{selectedLead.partner_name || 'Não informado'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">CPF/CNPJ do Sócio</p>
+                      <p className="text-sm font-medium text-zinc-400">{selectedLead.partner_cpf_cnpj || '---'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Faixa Etária</p>
+                      <p className="text-sm font-medium text-white">{selectedLead.partner_age_range || '---'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Qualificação</p>
+                      <p className="text-sm font-medium text-white">{selectedLead.partner_qualification || '---'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Data de Entrada</p>
+                      <p className="text-sm font-medium text-white">{selectedLead.partner_entry_date || '---'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="glass p-8 rounded-3xl">
+                  <h3 className="text-lg font-bold mb-6 flex items-center gap-3 text-red-500">
+                    <Filter className="text-red-500" />
+                    Dívidas e Pendências Federais
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Situação do CNPJ</p>
-                      <p className="text-sm font-bold text-white">{selectedLead.registration_status || 'N/A'}</p>
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Dívidas Federais Ativas</p>
+                      <p className={`text-sm font-bold ${selectedLead.active_federal_debts ? 'text-red-500' : 'text-emerald-500'}`}>
+                        {selectedLead.active_federal_debts || 'Nenhuma informada'}
+                      </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Última Atualização</p>
-                      <p className="text-sm font-medium text-zinc-400">{selectedLead.last_registration_update || 'N/A'}</p>
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Total de Dívidas</p>
+                      <p className="text-lg font-black text-red-500">
+                        {selectedLead.total_debts ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedLead.total_debts) : 'R$ 0,00'}
+                      </p>
                     </div>
                   </div>
                 </div>
