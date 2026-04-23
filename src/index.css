@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, monospace;
+  
+  --color-background: #0a0a0c;
+  --color-on-background: #f8fafc;
+  --color-surface: #121217;
+  --color-on-surface: #e2e8f0;
+  
+  --color-primary: #3b82f6;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #1e293b;
+  --color-on-primary-container: #93c5fd;
+  
+  --color-accent: #64748b;
+  --color-metal-blue: #2563eb;
+  --color-metal-silver: #94a3b8;
+  
+  --color-outline: #1e293b;
+  --color-error: #ef4444;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-on-background antialiased;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+  }
+}
+
+.glass {
+  @apply bg-surface/40 backdrop-blur-md border border-white/5;
+}
+
+.premium-gradient {
+  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.05), transparent),
+              radial-gradient(circle at bottom right, rgba(148, 163, 184, 0.05), transparent);
+}
