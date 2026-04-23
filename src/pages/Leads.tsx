@@ -152,6 +152,7 @@ export function Leads() {
         cnae: `${data.cnae_fiscal} - ${data.cnae_fiscal_descricao}`,
         secondary_cnaes: data.cnaes_secundarios?.map((c: any) => `${c.codigo} - ${c.descricao}`).join(' | '),
         registration_status: data.descricao_situacao_cadastral,
+        company_size: data.porte === 1 ? 'MEI' : data.porte === 3 ? 'MICRO EMPRESA' : data.porte === 5 ? 'DEMAIS (MÉDIO/GRANDE)' : 'N/A',
         last_registration_update: data.data_situacao_cadastral,
         activity_start_date: data.data_inicio_atividade,
         legal_nature: data.natureza_juridica,
