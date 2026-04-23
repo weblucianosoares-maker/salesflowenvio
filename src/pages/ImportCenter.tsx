@@ -50,6 +50,7 @@ export function ImportCenter() {
         const mappedChunk = chunk.map(row => ({
           cnpj: String(row['CNPJ'] || row['cnpj'] || '').replace(/\D/g, ''),
           name: row['Razão'] || row['Razão Social'] || row['Nome'] || row['Fantasia'] || 'Sem Nome',
+          nome_cliente: row['Razão'] || row['Razão Social'] || row['Nome'] || row['Fantasia'] || 'Sem Nome',
           address_street: row['Endereço'] || row['Logradouro'],
           address_number: String(row['Número'] || ''),
           address_neighborhood: row['Bairro'],
@@ -64,6 +65,7 @@ export function ImportCenter() {
           status: 'Novo',
           source: 'Importação Manual'
         })).filter(lead => lead.cnpj && lead.cnpj.length >= 14);
+
 
         
         allMappedLeads.push(...mappedChunk);
