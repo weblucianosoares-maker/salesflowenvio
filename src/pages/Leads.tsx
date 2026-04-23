@@ -28,6 +28,17 @@ export function Leads() {
     fetchLeads();
   }, [page]);
 
+  // Auto-refresh data from Receita when opening detail view
+  useEffect(() => {
+    if (selectedLead && viewMode === 'detail' && selectedLead.cnpj) {
+      // Pequeno delay para não sobrepor a animação de abertura
+      const timer = setTimeout(() => {
+        refreshLeadData(selectedLead);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedLead?.id, viewMode]);
+
   const fetchLeads = async () => {
     setIsLoading(true);
     try {
