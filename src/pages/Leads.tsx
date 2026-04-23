@@ -99,12 +99,13 @@ export function Leads() {
   const handleExportCSV = () => {
     if (leads.length === 0) return;
 
-    const headers = ['Nome', 'CNPJ', 'Status', 'Telefone', 'Email', 'Cidade', 'Estado', 'Porte'];
+    const headers = ['Nome', 'CNPJ', 'Status', 'Telefone 1', 'Telefone 2', 'Email', 'Cidade', 'Estado', 'Porte'];
     const rows = leads.map(l => [
       l.name || l.nome_cliente || '',
       l.cnpj || '',
       l.status || '',
       l.phone || '',
+      l.phone_2 || '',
       l.email || '',
       l.address_city || '',
       l.address_state || '',
@@ -147,7 +148,8 @@ export function Leads() {
         address_city: data.municipio,
         address_state: data.uf,
         address_zip: data.cep,
-        phone: data.ddd_telefone_1 || data.ddd_telefone_2,
+        phone: data.ddd_telefone_1 ? `(${data.ddd_telefone_1.substring(0,2)}) ${data.ddd_telefone_1.substring(2)}` : '',
+        phone_2: data.ddd_telefone_2 ? `(${data.ddd_telefone_2.substring(0,2)}) ${data.ddd_telefone_2.substring(2)}` : '',
         email: data.email,
         cnae: `${data.cnae_fiscal} - ${data.cnae_fiscal_descricao}`,
         secondary_cnaes: data.cnaes_secundarios?.map((c: any) => `${c.codigo} - ${c.descricao}`).join(' | '),
@@ -503,12 +505,42 @@ export function Leads() {
                     Canais de Contato
                   </h3>
                   <div className="space-y-4">
-                    <div>
-                      <p className="text-[10px] font-bold text-zinc-600 uppercase mb-1">WhatsApp / Telefone</p>
-                      <p className="text-sm font-medium flex items-center justify-between">
-                        {selectedLead.phone || 'Não informado'}
-                        {selectedLead.phone && <button className="text-primary text-xs font-bold">Ligar</button>}
-                      </p>
+                    <div className="bg-white/[0.03] p-4 rounded-2xl">
+                      <p className="text-[10px] font-bold text-zinc-600 uppercase mb-2">Telefones de Contato</p>
+                      {[selectedLead.phone, selectedLead.phone_2].filter(Boolean).map((p, idx) => {
+                        const cleanPhone = p.replace(/\D/g, '');
+                        const isMobile = cleanPhone.length === 11 && cleanPhone[2] === '9';
+                        return (
+                          <div key={idx} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                            <div className="flex items-center gap-2">
+                              {isMobile ? (
+                                <div className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-500">
+                                  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766 0-3.18-2.587-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793 0-.853.448-1.271.607-1.444.159-.173.346-.217.462-.217l.332.006c.118.005.243-.009.344.246.127.322.427 1.045.466 1.129.04.083.067.18.012.298-.054.117-.082.19-.163.284-.081.095-.164.19-.235.25-.088.075-.18.156-.076.331.103.175.459.758.985 1.229.676.605 1.243.792 1.417.878.173.088.274.072.376-.045.101-.116.44-.512.557-.686.117-.174.232-.146.39-.086.157.058 1.002.474 1.175.56.173.088.289.131.332.203.043.072.043.419-.101.824z"/></svg>
+                                </div>
+                              ) : (
+                                <Phone size={14} className="text-primary" />
+                              )}
+                              <span className="text-sm font-medium">{p}</span>
+                            </div>
+                            <div className="flex gap-3">
+                              {isMobile && (
+                                <a 
+                                  href={`https://wa.me/55${cleanPhone}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[10px] font-bold text-emerald-500 hover:underline"
+                                >
+                                  WhatsApp
+                                </a>
+                              )}
+                              <a href={`tel:${cleanPhone}`} className="text-[10px] font-bold text-primary hover:underline">Ligar</a>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {![selectedLead.phone, selectedLead.phone_2].filter(Boolean).length && (
+                        <p className="text-sm text-zinc-500 italic">Nenhum telefone informado</p>
+                      )}
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-zinc-600 uppercase mb-1">E-mail Corporativo</p>
