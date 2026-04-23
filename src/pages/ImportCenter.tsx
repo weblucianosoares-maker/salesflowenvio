@@ -4,10 +4,16 @@ import * as XLSX from 'xlsx';
 import { supabase } from '../lib/supabase';
 
 export function ImportCenter() {
-  const [isImporting, setIsImporting] = useState(false);
-  const [progress, setProgress] = useState({ current: 0, total: 0 });
-  const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importHistory, setImportHistory] = useState<any[]>(() => {
+    const saved = localStorage.getItem('salesflow_import_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const saveToHistory = (entry: any) => {
+    const newHistory = [entry, ...importHistory].slice(0, 5);
+    setImportHistory(newHistory);
+    localStorage.setItem('salesflow_import_history', JSON.stringify(newHistory));
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -21,10 +27,8 @@ export function ImportCenter() {
       const data = await file.arrayBuffer();
       let workbook;
       
-      // Better CSV handling: check if it's a CSV and try to detect delimiter
       if (file.name.toLowerCase().endsWith('.csv')) {
         const text = new TextDecoder().decode(data);
-        // Basic delimiter detection: check if there are more ; than ,
         const commaCount = (text.match(/,/g) || []).length;
         const semiCount = (text.match(/;/g) || []).length;
         const delimiter = semiCount > commaCount ? ';' : ',';
@@ -41,7 +45,6 @@ export function ImportCenter() {
         throw new Error('O arquivo está vazio ou o formato não é suportado.');
       }
 
-      // Process mapping in smaller chunks to avoid freezing the main thread
       const allMappedLeads: any[] = [];
       const CHUNK_SIZE_PROCESSING = 500;
       
@@ -66,10 +69,7 @@ export function ImportCenter() {
           source: 'Importação Manual'
         })).filter(lead => lead.cnpj && lead.cnpj.length >= 14);
 
-
-        
         allMappedLeads.push(...mappedChunk);
-        // Yield control to the browser
         await new Promise(resolve => setTimeout(resolve, 0));
       }
 
@@ -79,7 +79,6 @@ export function ImportCenter() {
 
       setProgress({ current: 0, total: allMappedLeads.length });
 
-      // Batch processing for Supabase: 100 leads at a time
       const BATCH_SIZE = 100;
       for (let i = 0; i < allMappedLeads.length; i += BATCH_SIZE) {
         const chunk = allMappedLeads.slice(i, i + BATCH_SIZE);
@@ -92,20 +91,32 @@ export function ImportCenter() {
         
         const currentProgress = Math.min(i + BATCH_SIZE, allMappedLeads.length);
         setProgress({ current: currentProgress, total: allMappedLeads.length });
-        
-        // Add a small delay to keep the UI responsive and animate properly
         await new Promise(resolve => setTimeout(resolve, 50));
       }
 
-      setImportStatus({ 
-        type: 'success', 
-        message: `${allMappedLeads.length} leads importados/atualizados com sucesso!` 
+      const successMessage = `${allMappedLeads.length} leads importados/atualizados com sucesso!`;
+      setImportStatus({ type: 'success', message: successMessage });
+      
+      saveToHistory({
+        filename: file.name,
+        count: allMappedLeads.length,
+        status: 'Concluído',
+        time: new Date().toLocaleTimeString(),
+        date: new Date().toLocaleDateString()
       });
+
     } catch (error: any) {
       console.error('Erro na importação:', error);
-      setImportStatus({ 
-        type: 'error', 
-        message: error.message || 'Falha ao processar o arquivo. Verifique o formato e as colunas.' 
+      const errorMessage = error.message || 'Falha ao processar o arquivo.';
+      setImportStatus({ type: 'error', message: errorMessage });
+      
+      saveToHistory({
+        filename: file.name,
+        count: 0,
+        status: 'Falha',
+        time: new Date().toLocaleTimeString(),
+        date: new Date().toLocaleDateString(),
+        error: errorMessage
       });
     } finally {
       setIsImporting(false);
@@ -201,23 +212,65 @@ export function ImportCenter() {
           </div>
         </div>
 
-        {/* Pipeline Queue Placeholder */}
+        {/* Pipeline Queue */}
         <div className="glass rounded-3xl overflow-hidden">
           <div className="p-6 bg-white/[0.02] border-b border-white/5 flex justify-between items-center">
             <h3 className="font-semibold text-sm">Atividade Recente de Importação</h3>
             <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tempo Real</span>
           </div>
-          <div className="p-8 flex flex-col items-center justify-center text-zinc-600 min-h-[200px]">
+          <div className="min-h-[200px]">
              {isImporting ? (
-               <>
+               <div className="p-12 flex flex-col items-center justify-center text-zinc-600">
                  <Loader2 className="animate-spin mb-4 text-primary" size={32} />
                  <p className="text-sm italic">Ingerindo dados: {progress.current} / {progress.total}</p>
-               </>
+                 <div className="w-full max-w-xs bg-white/5 h-1.5 rounded-full mt-4 overflow-hidden">
+                   <div 
+                    className="bg-primary h-full transition-all duration-300" 
+                    style={{ width: `${(progress.current / progress.total) * 100}%` }} 
+                   />
+                 </div>
+               </div>
+             ) : importHistory.length > 0 ? (
+               <div className="overflow-x-auto">
+                 <table className="w-full text-left">
+                   <thead>
+                     <tr className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-white/[0.01] border-b border-white/5">
+                       <th className="px-8 py-4">Arquivo</th>
+                       <th className="px-6 py-4">Quantidade</th>
+                       <th className="px-6 py-4">Horário</th>
+                       <th className="px-6 py-4">Status</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-white/5">
+                     {importHistory.map((log, i) => (
+                       <tr key={i} className="hover:bg-white/[0.02] transition-colors">
+                         <td className="px-8 py-4 flex items-center gap-3">
+                           <FileText size={18} className="text-zinc-600" />
+                           <span className="text-sm font-medium">{log.filename}</span>
+                         </td>
+                         <td className="px-6 py-4 text-sm text-zinc-400">
+                           {log.count} leads
+                         </td>
+                         <td className="px-6 py-4 text-xs text-zinc-500 font-mono">
+                           {log.time} <span className="opacity-30 ml-2">{log.date}</span>
+                         </td>
+                         <td className="px-6 py-4">
+                           <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
+                             log.status === 'Concluído' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'
+                           }`}>
+                             {log.status}
+                           </span>
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               </div>
              ) : (
-               <>
+               <div className="p-12 flex flex-col items-center justify-center text-zinc-600">
                  <FileText className="mb-4 opacity-20" size={32} />
                  <p className="text-sm italic">Nenhuma importação ativa no momento...</p>
-               </>
+               </div>
              )}
           </div>
         </div>
