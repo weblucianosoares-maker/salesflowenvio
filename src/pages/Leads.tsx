@@ -12,6 +12,7 @@ export function Leads() {
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const ITEMS_PER_PAGE = 10;
@@ -139,6 +140,10 @@ export function Leads() {
         email: data.email,
         cnae: `${data.cnae_fiscal} - ${data.cnae_fiscal_descricao}`,
         registration_status: data.descricao_situacao_cadastral,
+        // Almacenando info extra no lead se as colunas existirem ou apenas no estado local por enquanto
+        activity_start_date: data.data_inicio_atividade,
+        legal_nature: data.natureza_juridica,
+        capital_social: data.capital_social
       };
 
       const { error } = await supabase
@@ -292,7 +297,14 @@ export function Leads() {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {leads.map((lead) => (
-                  <tr key={lead.id} onClick={() => setSelectedLead(lead)} className="group hover:bg-white/[0.03] transition-colors cursor-pointer">
+                  <tr 
+                    key={lead.id} 
+                    onClick={() => {
+                      setSelectedLead(lead);
+                      setViewMode('detail');
+                    }} 
+                    className="group hover:bg-white/[0.03] transition-colors cursor-pointer"
+                  >
                     <td className="px-8 py-5">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-primary font-bold group-hover:scale-110 transition-transform">
@@ -334,6 +346,7 @@ export function Leads() {
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedLead(lead);
+                            setViewMode('detail');
                           }}
                           className="p-2 hover:bg-primary/10 rounded-lg transition-colors text-primary"
                         >
@@ -385,99 +398,159 @@ export function Leads() {
         </div>
       </section>
 
-      {/* Lead Details Drawer */}
-      {selectedLead && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
-            onClick={() => setSelectedLead(null)}
-          />
-          <aside className="relative w-full max-w-lg bg-background border-l border-white/10 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-            <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
-              <h3 className="font-bold text-lg">Detalhes do Lead</h3>
+      {/* Lead Details Full Page View */}
+      {selectedLead && viewMode === 'detail' && (
+        <div className="fixed inset-0 z-[60] bg-background overflow-auto animate-in fade-in zoom-in duration-300">
+          <div className="max-w-7xl mx-auto p-8 space-y-8">
+            <header className="flex items-center justify-between">
               <button 
-                onClick={() => setSelectedLead(null)}
-                className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                onClick={() => setViewMode('list')}
+                className="glass px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition-all"
               >
-                <X size={20} />
+                <X size={18} />
+                Fechar Ficha
               </button>
-            </div>
-            
-            <div className="flex-1 overflow-auto p-8 space-y-8">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center text-primary text-4xl font-bold mb-4 shadow-[0_0_40px_rgba(59,130,246,0.15)]">
-                  {(selectedLead.name || selectedLead.nome_cliente || 'L')[0]}
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => refreshLeadData(selectedLead)}
+                  disabled={isUpdating}
+                  className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold hover:brightness-110 transition-all flex items-center gap-2 shadow-lg shadow-primary/20"
+                >
+                  {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <Database size={18} />}
+                  Atualizar Dados via Receita
+                </button>
+                <button 
+                  onClick={() => handleDeleteLead(selectedLead.id)}
+                  className="bg-red-500/10 text-red-500 px-6 py-2.5 rounded-xl font-bold hover:bg-red-500/20 transition-all"
+                >
+                  Excluir Lead
+                </button>
+              </div>
+            </header>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Profile Card */}
+              <div className="lg:col-span-1 space-y-6">
+                <div className="glass p-8 rounded-3xl flex flex-col items-center text-center">
+                  <div className="w-32 h-32 rounded-[2rem] bg-primary/10 flex items-center justify-center text-primary text-5xl font-bold mb-6 shadow-[0_0_50px_rgba(59,130,246,0.2)]">
+                    {(selectedLead.name || selectedLead.nome_cliente || 'L')[0]}
+                  </div>
+                  <h1 className="text-2xl font-bold mb-2 leading-tight">{selectedLead.name || selectedLead.nome_cliente}</h1>
+                  <p className="text-zinc-500 font-mono text-sm mb-6">{selectedLead.cnpj}</p>
+                  
+                  <div className="w-full grid grid-cols-2 gap-4 text-left">
+                    <div className="bg-white/[0.03] p-4 rounded-2xl">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Status</p>
+                      <span className="text-xs font-bold text-primary">{selectedLead.status}</span>
+                    </div>
+                    <div className="bg-white/[0.03] p-4 rounded-2xl">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Porte</p>
+                      <span className="text-xs font-bold text-white">{selectedLead.company_size || 'N/A'}</span>
+                    </div>
+                  </div>
                 </div>
-                <h2 className="text-2xl font-bold mb-1">{selectedLead.name || selectedLead.nome_cliente}</h2>
-                <div className="flex items-center gap-2 mb-2">
-                  <p className="text-zinc-500 font-mono">{selectedLead.cnpj}</p>
-                  <button 
-                    onClick={() => refreshLeadData(selectedLead)}
-                    disabled={isUpdating}
-                    className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-bold hover:bg-primary/20 transition-all flex items-center gap-1"
-                  >
-                    {isUpdating ? <Loader2 size={10} className="animate-spin" /> : <Database size={10} />}
-                    Sincronizar
+
+                <div className="glass p-8 rounded-3xl space-y-6">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+                    <Phone size={16} className="text-primary" />
+                    Canais de Contato
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-[10px] font-bold text-zinc-600 uppercase mb-1">WhatsApp / Telefone</p>
+                      <p className="text-sm font-medium flex items-center justify-between">
+                        {selectedLead.phone || 'Não informado'}
+                        {selectedLead.phone && <button className="text-primary text-xs font-bold">Ligar</button>}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-zinc-600 uppercase mb-1">E-mail Corporativo</p>
+                      <p className="text-sm font-medium flex items-center justify-between">
+                        {selectedLead.email || 'Não informado'}
+                        {selectedLead.email && <button className="text-primary text-xs font-bold">Enviar</button>}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detailed Info */}
+              <div className="lg:col-span-2 space-y-8">
+                <div className="glass p-8 rounded-3xl">
+                  <h3 className="text-lg font-bold mb-6 flex items-center gap-3">
+                    <Building2 className="text-primary" />
+                    Ficha Técnica da Empresa
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-8 gap-x-12">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Razão Social</p>
+                      <p className="text-sm font-medium text-white">{selectedLead.name || selectedLead.nome_cliente}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Nome Fantasia</p>
+                      <p className="text-sm font-medium text-zinc-400">{selectedLead.nome_fantasia || 'Igual à Razão Social'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">CNAE Principal</p>
+                      <p className="text-sm font-medium text-white">{selectedLead.cnae || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Início da Atividade</p>
+                      <p className="text-sm font-medium text-white">{selectedLead.activity_start_date || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Capital Social</p>
+                      <p className="text-sm font-medium text-emerald-500">
+                        {selectedLead.capital_social ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedLead.capital_social) : 'N/A'}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Natureza Jurídica</p>
+                      <p className="text-sm font-medium text-zinc-400">{selectedLead.legal_nature || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="glass p-8 rounded-3xl">
+                  <h3 className="text-lg font-bold mb-6 flex items-center gap-3">
+                    <MapPin className="text-primary" />
+                    Localização e Sede
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-4 text-sm">
+                      <div>
+                        <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">Logradouro</p>
+                        <p className="text-white">{selectedLead.address_street}, {selectedLead.address_number}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">Bairro</p>
+                        <p className="text-white">{selectedLead.address_neighborhood}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-4 text-sm">
+                      <div>
+                        <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">Cidade / UF</p>
+                        <p className="text-white">{selectedLead.address_city} - {selectedLead.address_state}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">CEP</p>
+                        <p className="text-white">{selectedLead.address_zip}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <button className="flex-1 bg-primary text-white py-4 rounded-2xl font-bold hover:brightness-110 transition-all text-lg shadow-xl shadow-primary/20">
+                    Iniciar Abordagem Comercial
+                  </button>
+                  <button className="glass px-8 py-4 rounded-2xl font-bold hover:bg-white/5 transition-all">
+                    Agendar Reunião
                   </button>
                 </div>
-                <span className="px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest">
-                  {selectedLead.status}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="glass p-4 rounded-2xl">
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">
-                    <Phone size={12} className="text-primary" />
-                    Telefone
-                  </div>
-                  <p className="text-sm font-medium">{selectedLead.phone || 'Não informado'}</p>
-                </div>
-                <div className="glass p-4 rounded-2xl">
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">
-                    <Mail size={12} className="text-primary" />
-                    E-mail
-                  </div>
-                  <p className="text-sm font-medium break-all">{selectedLead.email || 'Não informado'}</p>
-                </div>
-              </div>
-
-              <div className="glass p-6 rounded-2xl space-y-4">
-                <h4 className="text-xs font-bold text-white uppercase tracking-widest flex items-center gap-2">
-                  <MapPin size={14} className="text-primary" />
-                  Localização
-                </h4>
-                <div className="space-y-2 text-sm text-zinc-400">
-                  <p><span className="text-zinc-600 font-medium">Endereço:</span> {selectedLead.address_street}, {selectedLead.address_number}</p>
-                  <p><span className="text-zinc-600 font-medium">Bairro:</span> {selectedLead.address_neighborhood}</p>
-                  <p><span className="text-zinc-600 font-medium">Cidade:</span> {selectedLead.address_city} - {selectedLead.address_state}</p>
-                  <p><span className="text-zinc-600 font-medium">CEP:</span> {selectedLead.address_zip}</p>
-                </div>
-              </div>
-
-              <div className="glass p-6 rounded-2xl space-y-4">
-                <h4 className="text-xs font-bold text-white uppercase tracking-widest flex items-center gap-2">
-                  <Building2 size={14} className="text-primary" />
-                  Dados Corporativos
-                </h4>
-                <div className="space-y-2 text-sm text-zinc-400">
-                  <p><span className="text-zinc-600 font-medium">Porte:</span> {selectedLead.company_size}</p>
-                  <p><span className="text-zinc-600 font-medium">Situação:</span> {selectedLead.registration_status}</p>
-                  <p><span className="text-zinc-600 font-medium">CNAE:</span> {selectedLead.cnae}</p>
-                  <p><span className="text-zinc-600 font-medium">Fonte:</span> {selectedLead.source}</p>
-                </div>
               </div>
             </div>
-
-            <div className="p-6 border-t border-white/10 flex gap-3">
-              <button className="flex-1 bg-primary text-white py-3 rounded-xl font-bold hover:brightness-110 transition-all">
-                Abrir no WhatsApp
-              </button>
-              <button className="flex-1 glass border border-white/10 py-3 rounded-xl font-bold hover:bg-white/5 transition-all">
-                Editar Dados
-              </button>
-            </div>
-          </aside>
+          </div>
         </div>
       )}
     </div>
