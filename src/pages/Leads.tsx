@@ -19,6 +19,36 @@ export function Leads() {
 
   const ITEMS_PER_PAGE = 10;
 
+  const calculateAge = (dateStr: string) => {
+    if (!dateStr || dateStr === 'N/A') return '';
+    try {
+      const birthDate = new Date(dateStr);
+      if (isNaN(birthDate.getTime())) return '';
+      const today = new Date();
+      let years = today.getFullYear() - birthDate.getFullYear();
+      let months = today.getMonth() - birthDate.getMonth();
+      if (months < 0 || (months === 0 && today.getDate() < birthDate.getDate())) {
+        years--;
+        months = months < 0 ? months + 12 : months;
+      }
+      return `(${years} anos e ${months} meses)`;
+    } catch {
+      return '';
+    }
+  };
+
+  const formatDateBR = (dateStr: string) => {
+    if (!dateStr || dateStr === 'N/A') return 'N/A';
+    if (dateStr.includes('/')) return dateStr;
+    try {
+      const [year, month, day] = dateStr.split('-');
+      if (!year || !month || !day) return dateStr;
+      return `${day}/${month}/${year}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
   useEffect(() => {
     setPage(0);
     fetchLeads();
@@ -599,7 +629,10 @@ export function Leads() {
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Início da Atividade</p>
-                      <p className="text-sm font-medium text-white">{selectedLead.activity_start_date || 'N/A'}</p>
+                      <p className="text-sm font-medium text-white">
+                        {formatDateBR(selectedLead.activity_start_date)}{' '}
+                        <span className="text-[10px] text-zinc-500 font-normal">{calculateAge(selectedLead.activity_start_date)}</span>
+                      </p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Capital Social</p>
@@ -659,7 +692,7 @@ export function Leads() {
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Última Atualização</p>
-                      <p className="text-sm font-medium text-zinc-400">{selectedLead.last_registration_update || 'N/A'}</p>
+                      <p className="text-sm font-medium text-zinc-400">{formatDateBR(selectedLead.last_registration_update)}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Quantidade de Filiais</p>
