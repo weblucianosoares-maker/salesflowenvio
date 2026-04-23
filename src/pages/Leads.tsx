@@ -140,6 +140,7 @@ export function Leads() {
       const updatedData = {
         name: data.razao_social || data.nome_fantasia,
         nome_cliente: data.razao_social || data.nome_fantasia,
+        nome_fantasia: data.nome_fantasia,
         address_street: data.logradouro,
         address_number: data.numero,
         address_neighborhood: data.bairro,
@@ -149,11 +150,13 @@ export function Leads() {
         phone: data.ddd_telefone_1 || data.ddd_telefone_2,
         email: data.email,
         cnae: `${data.cnae_fiscal} - ${data.cnae_fiscal_descricao}`,
+        secondary_cnaes: data.cnaes_secundarios?.map((c: any) => `${c.codigo} - ${c.descricao}`).join(' | '),
         registration_status: data.descricao_situacao_cadastral,
-        // Almacenando info extra no lead se as colunas existirem ou apenas no estado local por enquanto
+        last_registration_update: data.data_situacao_cadastral,
         activity_start_date: data.data_inicio_atividade,
         legal_nature: data.natureza_juridica,
-        capital_social: data.capital_social
+        capital_social: data.capital_social,
+        tax_regime: data.opcao_pelo_simples ? (data.opcao_pelo_mei ? 'MEI' : 'Simples Nacional') : 'Lucro Presumido/Real'
       };
 
       const { error } = await supabase
@@ -539,6 +542,10 @@ export function Leads() {
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">CNAE Principal</p>
                       <p className="text-sm font-medium text-white">{selectedLead.cnae || 'N/A'}</p>
                     </div>
+                    <div className="col-span-full space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">CNAEs Secundários</p>
+                      <p className="text-xs text-zinc-400 leading-relaxed">{selectedLead.secondary_cnaes || 'Nenhum informado'}</p>
+                    </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Início da Atividade</p>
                       <p className="text-sm font-medium text-white">{selectedLead.activity_start_date || 'N/A'}</p>
@@ -550,16 +557,29 @@ export function Leads() {
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Qtd. Funcionários Estimada</p>
-                      <p className="text-sm font-medium text-white">{selectedLead.employee_count || 'N/A'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Faturamento Estimado</p>
-                      <p className="text-sm font-medium text-white">{selectedLead.estimated_revenue || 'N/A'}</p>
-                    </div>
-                    <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Natureza Jurídica</p>
                       <p className="text-sm font-medium text-zinc-400">{selectedLead.legal_nature || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Regime Tributário</p>
+                      <p className="text-sm font-bold text-primary">{selectedLead.tax_regime || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="glass p-8 rounded-3xl">
+                  <h3 className="text-lg font-bold mb-6 flex items-center gap-3">
+                    <Globe className="text-primary" />
+                    Situação Cadastral
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Situação do CNPJ</p>
+                      <p className="text-sm font-bold text-white">{selectedLead.registration_status || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Última Atualização</p>
+                      <p className="text-sm font-medium text-zinc-400">{selectedLead.last_registration_update || 'N/A'}</p>
                     </div>
                   </div>
                 </div>
