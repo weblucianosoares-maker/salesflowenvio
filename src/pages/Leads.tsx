@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 export function Leads() {
   const [leads, setLeads] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterState, setFilterState] = useState('Todos os Estados');
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
@@ -113,6 +114,50 @@ export function Leads() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const refreshLeadData = async (lead: any) => {
+    if (!lead.cnpj) return;
+    
+    setIsUpdating(true);
+    try {
+      const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${lead.cnpj.replace(/\D/g, '')}`);
+      if (!response.ok) throw new Error('Falha ao consultar API de CNPJ');
+      
+      const data = await response.json();
+      
+      const updatedData = {
+        name: data.razao_social || data.nome_fantasia,
+        nome_cliente: data.razao_social || data.nome_fantasia,
+        address_street: data.logradouro,
+        address_number: data.numero,
+        address_neighborhood: data.bairro,
+        address_city: data.municipio,
+        address_state: data.uf,
+        address_zip: data.cep,
+        phone: data.ddd_telefone_1 || data.ddd_telefone_2,
+        email: data.email,
+        cnae: `${data.cnae_fiscal} - ${data.cnae_fiscal_descricao}`,
+        registration_status: data.descricao_situacao_cadastral,
+      };
+
+      const { error } = await supabase
+        .from('leads')
+        .update(updatedData)
+        .eq('id', lead.id);
+
+      if (error) throw error;
+
+      const finalLead = { ...lead, ...updatedData };
+      setSelectedLead(finalLead);
+      setLeads(prev => prev.map(l => l.id === lead.id ? finalLead : l));
+      alert('Dados atualizados com sucesso via Receita Federal!');
+    } catch (error) {
+      console.error('Erro ao atualizar dados:', error);
+      alert('Não foi possível atualizar os dados via CNPJ neste momento.');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (
@@ -364,8 +409,18 @@ export function Leads() {
                   {(selectedLead.name || selectedLead.nome_cliente || 'L')[0]}
                 </div>
                 <h2 className="text-2xl font-bold mb-1">{selectedLead.name || selectedLead.nome_cliente}</h2>
-                <p className="text-zinc-500 font-mono">{selectedLead.cnpj}</p>
-                <span className="mt-4 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest">
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-zinc-500 font-mono">{selectedLead.cnpj}</p>
+                  <button 
+                    onClick={() => refreshLeadData(selectedLead)}
+                    disabled={isUpdating}
+                    className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-bold hover:bg-primary/20 transition-all flex items-center gap-1"
+                  >
+                    {isUpdating ? <Loader2 size={10} className="animate-spin" /> : <Database size={10} />}
+                    Sincronizar
+                  </button>
+                </div>
+                <span className="px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest">
                   {selectedLead.status}
                 </span>
               </div>
