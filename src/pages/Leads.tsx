@@ -77,7 +77,13 @@ export function Leads() {
         .select('*', { count: 'exact' });
 
       if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,nome_cliente.ilike.%${searchTerm}%,cnpj.ilike.%${searchTerm}%,address_city.ilike.%${searchTerm}%`);
+        const cleanTerm = searchTerm.replace(/\D/g, '');
+        if (cleanTerm && /^\d+$/.test(cleanTerm)) {
+          // Se for numérico, busca pelo CNPJ limpo OU pelo termo original nos outros campos
+          query = query.or(`cnpj.ilike.%${cleanTerm}%,name.ilike.%${searchTerm}%,nome_cliente.ilike.%${searchTerm}%,address_city.ilike.%${searchTerm}%`);
+        } else {
+          query = query.or(`cnpj.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%,nome_cliente.ilike.%${searchTerm}%,address_city.ilike.%${searchTerm}%`);
+        }
       }
 
       if (filterState !== 'Todos os Estados') {
