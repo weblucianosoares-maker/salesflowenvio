@@ -605,6 +605,27 @@ export function Leads() {
                 </div>
 
                 <div className="glass p-8 rounded-3xl">
+                  <h3 className="text-lg font-bold mb-6 flex items-center gap-3">
+                    <Globe className="text-primary" />
+                    Situação e Presença
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Situação do CNPJ</p>
+                      <p className="text-sm font-bold text-white">{selectedLead.registration_status || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Última Atualização</p>
+                      <p className="text-sm font-medium text-zinc-400">{selectedLead.last_registration_update || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Quantidade de Filiais</p>
+                      <p className="text-sm font-medium text-white">{selectedLead.branch_count || 'Não informado'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="glass p-8 rounded-3xl">
                   <h3 className="text-lg font-bold mb-6 flex items-center gap-3 text-red-500">
                     <Filter className="text-red-500" />
                     Dívidas e Pendências Federais
