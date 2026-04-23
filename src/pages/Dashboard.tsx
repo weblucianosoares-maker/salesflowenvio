@@ -31,8 +31,8 @@ export function Dashboard() {
       setMetrics({
         totalLeads: totalLeads || 0,
         activeLeads: activeLeads || 0,
-        emailsSent: 458, // Static for now until email engine is ready
-        openRate: '64.2%'
+        emailsSent: 0,
+        openRate: '0%'
       });
     } catch (error) {
       console.error('Erro ao buscar métricas:', error);

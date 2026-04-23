@@ -1,6 +1,20 @@
+import { useState, useEffect } from 'react';
 import { Bold, Italic, Link, Paperclip, Edit3, Tag, Zap, Eye, Users, Send, Clock, AlertTriangle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export function Campanhas() {
+  const [leadCount, setLeadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchLeadCount = async () => {
+      const { count } = await supabase
+        .from('leads')
+        .select('*', { count: 'exact', head: true });
+      setLeadCount(count || 0);
+    };
+    fetchLeadCount();
+  }, []);
+
   return (
     <div className="p-8 text-white min-h-screen bg-background pt-20 premium-gradient">
       <div className="flex justify-between items-center mb-10">
@@ -40,14 +54,14 @@ export function Campanhas() {
                 <input 
                   type="text" 
                   className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-white focus:ring-1 focus:ring-primary outline-none font-medium" 
-                  defaultValue="Oportunidade de Parceria Estratégica para {{Partner}}" 
+                  placeholder="Ex: Oportunidade de Parceria Estratégica para {{Partner}}" 
                 />
               </div>
               <div>
                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2 px-1">Mensagem</label>
                 <textarea 
                   className="w-full bg-white/5 border border-white/5 rounded-2xl p-6 text-white h-80 focus:ring-1 focus:ring-primary outline-none leading-relaxed resize-none" 
-                  defaultValue="Olá {{Name}},&#10;&#10;Acompanhando o mercado de {{Sector}} em {{City}}, notei que a {{Partner}} tem se destacado...&#10;&#10;Estou entrando em contato para discutir como nosso framework alinha-se com suas operações..." 
+                  placeholder="Escreva sua mensagem aqui... Use {{Name}}, {{Partner}}, etc. para personalizar."
                 />
               </div>
             </div>
@@ -98,14 +112,14 @@ export function Campanhas() {
           <div className="glass p-8 rounded-3xl bg-emerald-500/[0.02] border-emerald-500/10">
             <h4 className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-4">Alcance Estimado</h4>
             <div className="flex items-end gap-2">
-              <p className="text-5xl font-black text-white tracking-tighter">2.842</p>
+              <p className="text-5xl font-black text-white tracking-tighter">{leadCount.toLocaleString()}</p>
               <span className="text-sm font-medium text-emerald-500 mb-2 flex items-center gap-1">
                 Leads <Users size={14} />
               </span>
             </div>
             <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2 text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
               <Clock size={12} />
-              Tempo estimado: 14 horas
+              Tempo estimado: {Math.ceil((leadCount / 50) * 0.25)} horas
             </div>
           </div>
 
@@ -125,3 +139,4 @@ export function Campanhas() {
     </div>
   );
 }
+
