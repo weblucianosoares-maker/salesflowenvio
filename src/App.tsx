@@ -10,15 +10,21 @@ import { Dashboard } from './pages/Dashboard';
 import { Leads } from './pages/Leads';
 import { Campanhas } from './pages/Campanhas';
 import { Monitorar } from './pages/Monitorar';
+import { useState } from 'react';
 
 export default function App() {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   return (
     <BrowserRouter>
       <div className="flex h-screen bg-background">
-        <Sidebar />
+        <Sidebar 
+          isCollapsed={isSidebarCollapsed} 
+          onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+        />
         
         {/* Main Content */}
-        <div className="flex-1 overflow-auto ml-64">
+        <div className={`flex-1 overflow-auto transition-all duration-300 ${isSidebarCollapsed ? 'ml-20' : 'ml-64'}`}>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
