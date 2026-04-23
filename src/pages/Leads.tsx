@@ -506,6 +506,15 @@ export function Leads() {
                         {selectedLead.email && <button className="text-primary text-xs font-bold">Enviar</button>}
                       </p>
                     </div>
+                    {selectedLead.website && (
+                      <div>
+                        <p className="text-[10px] font-bold text-zinc-600 uppercase mb-1">Website</p>
+                        <p className="text-sm font-medium flex items-center justify-between">
+                          {selectedLead.website}
+                          <a href={selectedLead.website.startsWith('http') ? selectedLead.website : `https://${selectedLead.website}`} target="_blank" rel="noreferrer" className="text-primary text-xs font-bold">Visitar</a>
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
