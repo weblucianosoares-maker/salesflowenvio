@@ -4,6 +4,11 @@ import * as XLSX from 'xlsx';
 import { supabase } from '../lib/supabase';
 
 export function ImportCenter() {
+  const [isImporting, setIsImporting] = useState(false);
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [importHistory, setImportHistory] = useState<any[]>(() => {
     const saved = localStorage.getItem('salesflow_import_history');
     return saved ? JSON.parse(saved) : [];
