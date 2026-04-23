@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 
 export function ImportCenter() {
   const [isImporting, setIsImporting] = useState(false);
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -14,15 +15,16 @@ export function ImportCenter() {
 
     setIsImporting(true);
     setImportStatus({ type: null, message: '' });
+    setProgress({ current: 0, total: 0 });
 
     try {
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
+      const workbook = XLSX.read(data, { type: 'array' });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
 
-      const mappedLeads = jsonData.map(row => ({
-        cnpj: String(row['CNPJ'] || ''),
+      const allMappedLeads = jsonData.map(row => ({
+        cnpj: String(row['CNPJ'] || '').replace(/\D/g, ''), // Clean CNPJ
         company_name: row['Razão'],
         name: row['Razão'] || row['Fantasia'] || 'Sem Nome',
         trading_name: row['Fantasia'],
@@ -69,17 +71,27 @@ export function ImportCenter() {
         total_debts: Number(row['Total Dívidas'] || 0),
         status: 'Novo',
         source: 'Importação Manual'
-      })).filter(lead => lead.cnpj);
+      })).filter(lead => lead.cnpj && lead.cnpj.length >= 14);
 
-      const { error } = await supabase
-        .from('leads')
-        .upsert(mappedLeads, { onConflict: 'cnpj' });
+      setProgress({ current: 0, total: allMappedLeads.length });
 
-      if (error) throw error;
+      // Batch processing: 100 leads at a time
+      const BATCH_SIZE = 100;
+      for (let i = 0; i < allMappedLeads.length; i += BATCH_SIZE) {
+        const chunk = allMappedLeads.slice(i, i + BATCH_SIZE);
+        
+        const { error } = await supabase
+          .from('leads')
+          .upsert(chunk, { onConflict: 'cnpj' });
+
+        if (error) throw error;
+        
+        setProgress(prev => ({ ...prev, current: Math.min(i + BATCH_SIZE, allMappedLeads.length) }));
+      }
 
       setImportStatus({ 
         type: 'success', 
-        message: `${mappedLeads.length} leads importados/atualizados com sucesso!` 
+        message: `${allMappedLeads.length} leads importados/atualizados com sucesso!` 
       });
     } catch (error: any) {
       console.error('Erro na importação:', error);
@@ -124,7 +136,7 @@ export function ImportCenter() {
             </div>
             
             <h3 className="text-xl font-bold text-white mb-2">
-              {isImporting ? 'Processando dados...' : 'Solte os arquivos de governança'}
+              {isImporting ? `Processando ${progress.current} de ${progress.total} leads...` : 'Solte os arquivos de governança'}
             </h3>
             <p className="text-zinc-500 text-sm mb-8 text-center max-w-sm">
               Arraste e solte arquivos <span className="text-white font-bold">CSV</span> ou <span className="text-white font-bold">XLSX</span> aqui. 
@@ -191,7 +203,7 @@ export function ImportCenter() {
              {isImporting ? (
                <>
                  <Loader2 className="animate-spin mb-4 text-primary" size={32} />
-                 <p className="text-sm italic">Ingerindo dados no Supabase...</p>
+                 <p className="text-sm italic">Ingerindo dados: {progress.current} / {progress.total}</p>
                </>
              ) : (
                <>
