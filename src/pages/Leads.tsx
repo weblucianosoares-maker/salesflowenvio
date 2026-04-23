@@ -267,13 +267,36 @@ export function Leads() {
                 <select 
                   value={filterState}
                   onChange={(e) => setFilterState(e.target.value)}
-                  className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:ring-1 focus:ring-primary outline-none appearance-none"
+                  className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer"
                 >
-                  <option value="Todos os Estados">Todos os Estados</option>
-                  <option value="Rio de Janeiro, RJ">Rio de Janeiro, RJ</option>
-                  <option value="São Paulo, SP">São Paulo, SP</option>
-                  <option value="Minas Gerais, MG">Minas Gerais, MG</option>
-                  <option value="Espírito Santo, ES">Espírito Santo, ES</option>
+                  <option value="Todos os Estados" className="bg-[#1a1a1c] text-white">Todos os Estados</option>
+                  <option value="Acre, AC" className="bg-[#1a1a1c] text-white">Acre, AC</option>
+                  <option value="Alagoas, AL" className="bg-[#1a1a1c] text-white">Alagoas, AL</option>
+                  <option value="Amapá, AP" className="bg-[#1a1a1c] text-white">Amapá, AP</option>
+                  <option value="Amazonas, AM" className="bg-[#1a1a1c] text-white">Amazonas, AM</option>
+                  <option value="Bahia, BA" className="bg-[#1a1a1c] text-white">Bahia, BA</option>
+                  <option value="Ceará, CE" className="bg-[#1a1a1c] text-white">Ceará, CE</option>
+                  <option value="Distrito Federal, DF" className="bg-[#1a1a1c] text-white">Distrito Federal, DF</option>
+                  <option value="Espírito Santo, ES" className="bg-[#1a1a1c] text-white">Espírito Santo, ES</option>
+                  <option value="Goiás, GO" className="bg-[#1a1a1c] text-white">Goiás, GO</option>
+                  <option value="Maranhão, MA" className="bg-[#1a1a1c] text-white">Maranhão, MA</option>
+                  <option value="Mato Grosso, MT" className="bg-[#1a1a1c] text-white">Mato Grosso, MT</option>
+                  <option value="Mato Grosso do Sul, MS" className="bg-[#1a1a1c] text-white">Mato Grosso do Sul, MS</option>
+                  <option value="Minas Gerais, MG" className="bg-[#1a1a1c] text-white">Minas Gerais, MG</option>
+                  <option value="Pará, PA" className="bg-[#1a1a1c] text-white">Pará, PA</option>
+                  <option value="Paraíba, PB" className="bg-[#1a1a1c] text-white">Paraíba, PB</option>
+                  <option value="Paraná, PR" className="bg-[#1a1a1c] text-white">Paraná, PR</option>
+                  <option value="Pernambuco, PE" className="bg-[#1a1a1c] text-white">Pernambuco, PE</option>
+                  <option value="Piauí, PI" className="bg-[#1a1a1c] text-white">Piauí, PI</option>
+                  <option value="Rio de Janeiro, RJ" className="bg-[#1a1a1c] text-white">Rio de Janeiro, RJ</option>
+                  <option value="Rio Grande do Norte, RN" className="bg-[#1a1a1c] text-white">Rio Grande do Norte, RN</option>
+                  <option value="Rio Grande do Sul, RS" className="bg-[#1a1a1c] text-white">Rio Grande do Sul, RS</option>
+                  <option value="Rondônia, RO" className="bg-[#1a1a1c] text-white">Rondônia, RO</option>
+                  <option value="Roraima, RR" className="bg-[#1a1a1c] text-white">Roraima, RR</option>
+                  <option value="Santa Catarina, SC" className="bg-[#1a1a1c] text-white">Santa Catarina, SC</option>
+                  <option value="São Paulo, SP" className="bg-[#1a1a1c] text-white">São Paulo, SP</option>
+                  <option value="Sergipe, SE" className="bg-[#1a1a1c] text-white">Sergipe, SE</option>
+                  <option value="Tocantins, TO" className="bg-[#1a1a1c] text-white">Tocantins, TO</option>
                 </select>
 
                 <div className="relative">
