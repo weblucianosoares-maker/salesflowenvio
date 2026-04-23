@@ -8,6 +8,8 @@ export function Leads() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterState, setFilterState] = useState('Todos os Estados');
+  const [filterCity, setFilterCity] = useState('');
+  const [filterNeighborhood, setFilterNeighborhood] = useState('');
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
@@ -20,7 +22,7 @@ export function Leads() {
   useEffect(() => {
     setPage(0);
     fetchLeads();
-  }, [searchTerm, filterState, selectedSizes]);
+  }, [searchTerm, filterState, filterCity, filterNeighborhood, selectedSizes]);
 
   useEffect(() => {
     fetchLeads();
@@ -40,6 +42,14 @@ export function Leads() {
       if (filterState !== 'Todos os Estados') {
         const uf = filterState.includes(', ') ? filterState.split(', ')[1] : filterState;
         query = query.eq('address_state', uf);
+      }
+
+      if (filterCity) {
+        query = query.ilike('address_city', `%${filterCity}%`);
+      }
+
+      if (filterNeighborhood) {
+        query = query.ilike('address_neighborhood', `%${filterNeighborhood}%`);
       }
 
       if (selectedSizes.length > 0) {
@@ -178,6 +188,8 @@ export function Leads() {
             <button 
               onClick={() => {
                 setFilterState('Todos os Estados');
+                setFilterCity('');
+                setFilterNeighborhood('');
                 setSearchTerm('');
                 setSelectedSizes([]);
                 setPage(0);
@@ -191,23 +203,47 @@ export function Leads() {
           <div className="space-y-6">
             <div>
               <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-3">Território</label>
-              <select 
-                value={filterState}
-                onChange={(e) => setFilterState(e.target.value)}
-                className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:ring-1 focus:ring-primary outline-none appearance-none"
-              >
-                <option value="Todos os Estados">Todos os Estados</option>
-                <option value="Rio de Janeiro, RJ">Rio de Janeiro, RJ</option>
-                <option value="São Paulo, SP">São Paulo, SP</option>
-                <option value="Minas Gerais, MG">Minas Gerais, MG</option>
-                <option value="Espírito Santo, ES">Espírito Santo, ES</option>
-              </select>
+              <div className="space-y-4">
+                <select 
+                  value={filterState}
+                  onChange={(e) => setFilterState(e.target.value)}
+                  className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:ring-1 focus:ring-primary outline-none appearance-none"
+                >
+                  <option value="Todos os Estados">Todos os Estados</option>
+                  <option value="Rio de Janeiro, RJ">Rio de Janeiro, RJ</option>
+                  <option value="São Paulo, SP">São Paulo, SP</option>
+                  <option value="Minas Gerais, MG">Minas Gerais, MG</option>
+                  <option value="Espírito Santo, ES">Espírito Santo, ES</option>
+                </select>
+
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" size={14} />
+                  <input 
+                    type="text" 
+                    placeholder="Cidade..."
+                    value={filterCity}
+                    onChange={(e) => setFilterCity(e.target.value)}
+                    className="w-full bg-white/5 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-xs text-white focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" size={14} />
+                  <input 
+                    type="text" 
+                    placeholder="Bairro..."
+                    value={filterNeighborhood}
+                    onChange={(e) => setFilterNeighborhood(e.target.value)}
+                    className="w-full bg-white/5 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-xs text-white focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+              </div>
             </div>
 
             <div>
               <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-3">Porte da Empresa</label>
               <div className="space-y-2">
-                {['Pequena (PME)', 'Média', 'Grande Corp'].map((size) => (
+                {['MEI', 'MICRO EMPRESA', 'EPP', 'DEMAIS', 'MÉDIO/GRANDE PORTE'].map((size) => (
                   <label key={size} className="flex items-center gap-3 cursor-pointer group">
                     <input 
                       type="checkbox"
@@ -224,7 +260,7 @@ export function Leads() {
                     <div className={`w-4 h-4 rounded border ${selectedSizes.includes(size) ? 'bg-primary border-primary' : 'border-white/10'} group-hover:border-primary/50 transition-colors flex items-center justify-center`}>
                       {selectedSizes.includes(size) && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                     </div>
-                    <span className={`text-sm ${selectedSizes.includes(size) ? 'text-white font-medium' : 'text-zinc-400'} group-hover:text-white transition-colors`}>{size}</span>
+                    <span className={`text-[11px] ${selectedSizes.includes(size) ? 'text-white font-medium' : 'text-zinc-400'} group-hover:text-white transition-colors`}>{size}</span>
                   </label>
                 ))}
               </div>
@@ -503,6 +539,14 @@ export function Leads() {
                       <p className="text-sm font-medium text-emerald-500">
                         {selectedLead.capital_social ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedLead.capital_social) : 'N/A'}
                       </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Qtd. Funcionários Estimada</p>
+                      <p className="text-sm font-medium text-white">{selectedLead.employee_count || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Faturamento Estimado</p>
+                      <p className="text-sm font-medium text-white">{selectedLead.estimated_revenue || 'N/A'}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Natureza Jurídica</p>
