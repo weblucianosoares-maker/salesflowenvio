@@ -1025,20 +1025,20 @@ export function Leads() {
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">CNAE Principal</p>
                       <p className="text-sm font-medium text-white">{sanitizeText(selectedLead.cnae) || 'N/A'}</p>
                     </div>
-                    <div className="col-span-full space-y-1">
-                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descrição do CNAE</p>
-                      <p className="text-sm font-medium text-zinc-300 leading-relaxed">{sanitizeText(selectedLead.cnae_description) || 'N/A'}</p>
-                    </div>
-                    <div className="col-span-full space-y-1">
-                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">CNAEs Secundários</p>
-                      <p className="text-xs text-zinc-400 leading-relaxed">{sanitizeText(selectedLead.secondary_cnaes) || 'Nenhum informado'}</p>
-                    </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Início da Atividade</p>
                       <p className="text-sm font-medium text-white">
                         {formatDateBR(selectedLead.activity_start_date)}{' '}
                         <span className="text-[10px] text-zinc-500 font-normal">{calculateAge(selectedLead.activity_start_date)}</span>
                       </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">CNAEs Secundários</p>
+                      <p className="text-xs text-zinc-400 leading-relaxed">{sanitizeText(selectedLead.secondary_cnaes) || 'Nenhum informado'}</p>
+                    </div>
+                    <div className="col-span-full space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descrição do CNAE</p>
+                      <p className="text-sm font-medium text-zinc-300 leading-relaxed">{sanitizeText(selectedLead.cnae_description) || 'N/A'}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Capital Social</p>
