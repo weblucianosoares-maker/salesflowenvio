@@ -979,7 +979,15 @@ export function Leads() {
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Regime Tributário</p>
-                      <p className="text-sm font-bold text-primary">{selectedLead.tax_regime || 'N/A'}</p>
+                      <p className="text-sm font-bold text-blue-400">{sanitizeText(selectedLead.tax_regime) || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Faturamento Estimado</p>
+                      <p className="text-sm font-medium text-white">{selectedLead.estimated_revenue || 'Não informado'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Quadro de Funcionários</p>
+                      <p className="text-sm font-medium text-white">{selectedLead.employee_count || 'Não informado'}</p>
                     </div>
                   </div>
                 </div>
