@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bold, Italic, Link, Paperclip, Edit3, Tag, Zap, Eye, Users, Send, Clock, AlertTriangle, Settings, CheckCircle2, Loader2, Play, Pause, Trash2, FileText, ChevronDown } from 'lucide-react';
+import { Bold, Italic, Link, Paperclip, Edit3, Tag, Zap, Eye, Users, Send, Clock, AlertTriangle, Settings, CheckCircle2, Loader2, Play, Pause, Trash2, FileText, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface EmailConfig {
@@ -13,8 +13,9 @@ interface EmailConfig {
 
 export function Campanhas() {
   const [leadCount, setLeadCount] = useState(0);
+  const [previewLeads, setPreviewLeads] = useState<any[]>([]);
+  const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
-  const [showTemplates, setShowTemplates] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -58,6 +59,13 @@ export function Campanhas() {
       .from('leads')
       .select('*', { count: 'exact', head: true });
     setLeadCount(count || 0);
+
+    const { data } = await supabase
+      .from('leads')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(5);
+    if (data) setPreviewLeads(data);
   };
 
   const fetchConfig = async () => {
@@ -305,7 +313,28 @@ export function Campanhas() {
         {/* Editor & Config */}
         <div className="col-span-8 space-y-6">
           <div className="glass rounded-3xl p-8">
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5 relative">
+            <div className="mb-6">
+              <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <FileText size={14} className="text-primary"/> Modelos Prontos
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {templates.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setSubject(t.subject);
+                      setMessage(t.body);
+                    }}
+                    className="p-4 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-primary/10 hover:border-primary/30 transition-all text-left flex flex-col gap-2 group"
+                  >
+                    <p className="text-xs font-bold text-white group-hover:text-primary transition-colors">{t.name}</p>
+                    <p className="text-[10px] text-zinc-400 line-clamp-2 leading-relaxed">{t.subject}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/5 relative">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-primary/10 rounded-lg">
                   <Edit3 className="text-primary" size={20} />
@@ -313,35 +342,7 @@ export function Campanhas() {
                 <h3 className="font-bold text-lg">Composição do E-mail</h3>
               </div>
               <div className="flex items-center gap-4">
-                <div className="relative">
-                  <button 
-                    onClick={() => setShowTemplates(!showTemplates)}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 rounded-xl text-sm font-bold text-primary transition-colors border border-primary/20"
-                  >
-                    <FileText size={16} />
-                    Modelos Prontos
-                    <ChevronDown size={16} />
-                  </button>
-                  {showTemplates && (
-                    <div className="absolute right-0 top-full mt-2 w-80 bg-[#1a1b1e] border border-white/10 rounded-xl shadow-2xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                      {templates.map(t => (
-                        <button
-                          key={t.id}
-                          onClick={() => {
-                            setSubject(t.subject);
-                            setMessage(t.body);
-                            setShowTemplates(false);
-                          }}
-                          className="w-full text-left px-5 py-4 hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors"
-                        >
-                          <p className="text-sm font-bold text-white mb-1">{t.name}</p>
-                          <p className="text-xs text-zinc-400 truncate">{t.subject}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-1 border-l border-white/10 pl-4">
+                <div className="flex gap-1 border-white/10 pl-4">
                   {[Bold, Italic, Link, Paperclip].map((Icon, i) => (
                     <button key={i} className="p-2.5 hover:bg-white/5 rounded-lg text-zinc-500 hover:text-white transition-colors">
                       <Icon size={18} />
@@ -412,12 +413,88 @@ export function Campanhas() {
 
         {/* Preview & Reach */}
         <div className="col-span-4 space-y-6">
-          <div className="glass p-8 rounded-3xl h-[400px] flex flex-col items-center justify-center text-center">
-             <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
-               <Eye className="text-zinc-500 opacity-20" size={40}/>
-             </div>
-             <h4 className="font-bold text-zinc-500 mb-2">Live Preview</h4>
-             <p className="text-xs text-zinc-600 px-8">Selecione um lead na tabela para visualizar a renderização final personalizada.</p>
+          <div className="glass p-6 rounded-3xl h-[450px] flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-bold text-zinc-300 flex items-center gap-2">
+                <Eye className="text-primary" size={18}/> 
+                Live Preview
+              </h4>
+              {previewLeads.length > 0 && (
+                <div className="flex items-center gap-2 bg-white/5 px-2 py-1 rounded-lg">
+                  <button onClick={() => setCurrentPreviewIndex(p => Math.max(0, p - 1))} disabled={currentPreviewIndex === 0} className="p-1 hover:text-white text-zinc-500 disabled:opacity-30 transition-colors">
+                     <ChevronLeft size={16} />
+                  </button>
+                  <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest w-12 text-center">
+                    {currentPreviewIndex + 1} / {previewLeads.length}
+                  </span>
+                  <button onClick={() => setCurrentPreviewIndex(p => Math.min(previewLeads.length - 1, p + 1))} disabled={currentPreviewIndex === previewLeads.length - 1} className="p-1 hover:text-white text-zinc-500 disabled:opacity-30 transition-colors">
+                     <ChevronRight size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            {previewLeads.length > 0 ? (() => {
+               const lead = previewLeads[currentPreviewIndex];
+               let fallbackNome = lead.partner_name || lead.nome_cliente || 'Responsável';
+               if (fallbackNome.length <= 3 || !isNaN(Number(fallbackNome))) {
+                 fallbackNome = 'Responsável pela ' + (lead.nome_fantasia || lead.name || 'empresa');
+               }
+
+               let personalizedBody = message
+                 .replace(/{{Name}}/gi, lead.name || '')
+                 .replace(/{{Partner}}/gi, fallbackNome)
+                 .replace(/{{City}}/gi, lead.address_city || '')
+                 .replace(/{{Sector}}/gi, lead.cnae || '')
+                 .replace(/{{Razão}}/gi, lead.name || '')
+                 .replace(/{{Fantasia}}/gi, lead.nome_fantasia || lead.name || '')
+                 .replace(/{{Nome_do_Sócio}}/gi, fallbackNome)
+                 .replace(/{{Cidade}}/gi, lead.address_city || '')
+                 .replace(/{{Texto_CNAE_Principal}}/gi, lead.cnae || '')
+                 .replace(/{{Porte_Empresa}}/gi, lead.company_size || 'empresa')
+                 .replace(/{{Bairro}}/gi, lead.address_neighborhood || 'sua região')
+                 .replace(/{{Quadro_de_Funcionários}}/gi, lead.employee_count || 'seus')
+                 .replace(/{{Telefone_1}}/gi, lead.phone || '')
+                 .replace(/{{Regime_Tributário}}/gi, lead.regime_tributario || 'seu regime atual')
+                 .replace(/{{Faturamento_Estimado}}/gi, lead.estimated_revenue || 'seu porte');
+
+               let personalizedSubject = subject
+                 .replace(/{{Name}}/gi, lead.name || '')
+                 .replace(/{{Partner}}/gi, fallbackNome)
+                 .replace(/{{City}}/gi, lead.address_city || '')
+                 .replace(/{{Sector}}/gi, lead.cnae || '')
+                 .replace(/{{Razão}}/gi, lead.name || '')
+                 .replace(/{{Fantasia}}/gi, lead.nome_fantasia || lead.name || '')
+                 .replace(/{{Nome_do_Sócio}}/gi, fallbackNome)
+                 .replace(/{{Cidade}}/gi, lead.address_city || '');
+
+               return (
+                 <div className="flex-1 bg-[#121316] border border-white/5 rounded-2xl p-6 overflow-y-auto custom-scrollbar">
+                   <div className="mb-4 pb-4 border-b border-white/5">
+                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Para:</p>
+                     <p className="text-sm font-bold text-blue-400">{lead.email || 'sem-email@exemplo.com'}</p>
+                     <p className="text-xs text-zinc-400 mt-1">{lead.nome_fantasia || lead.name}</p>
+                   </div>
+                   <div className="mb-4 pb-4 border-b border-white/5">
+                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Assunto:</p>
+                     <p className="text-sm font-bold text-white">{personalizedSubject || <span className="text-zinc-600 font-normal italic">Preencha o assunto</span>}</p>
+                   </div>
+                   <div>
+                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-3">Mensagem:</p>
+                     <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
+                       {personalizedBody || <span className="text-zinc-600 font-normal italic">Escreva sua mensagem para ver a renderização aqui...</span>}
+                     </div>
+                   </div>
+                 </div>
+               );
+            })() : (
+               <div className="flex-1 flex flex-col items-center justify-center text-center">
+                 <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
+                   <Eye className="text-zinc-500 opacity-20" size={40}/>
+                 </div>
+                 <p className="text-xs text-zinc-500 px-8">Carregando leads da base de dados...</p>
+               </div>
+            )}
           </div>
           
           <div className="glass p-8 rounded-3xl bg-emerald-500/[0.02] border-emerald-500/10">
