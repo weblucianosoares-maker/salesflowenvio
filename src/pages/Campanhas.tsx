@@ -407,6 +407,7 @@ export function Campanhas() {
         </div>
       </div>
     </div>
+  </div>
   );
 }
 
