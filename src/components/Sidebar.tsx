@@ -1,9 +1,10 @@
-import { LayoutDashboard, Users, CloudUpload, Megaphone, Monitor as MonitorIcon, LogOut, ChevronLeft, ChevronRight, Inbox as InboxIcon } from 'lucide-react';
+import { LayoutDashboard, Users, CloudUpload, Megaphone, Monitor as MonitorIcon, LogOut, ChevronLeft, ChevronRight, Inbox as InboxIcon, Filter } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 const navItems = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Leads', path: '/leads', icon: Users },
+  { name: 'Funil de Vendas', path: '/funnel', icon: Filter },
   { name: 'Importar', path: '/import', icon: CloudUpload },
   { name: 'Campanhas', path: '/campaigns', icon: Megaphone },
   { name: 'Caixa de E-mails', path: '/inbox', icon: InboxIcon },

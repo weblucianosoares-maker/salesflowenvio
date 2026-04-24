@@ -11,6 +11,7 @@ import { Leads } from './pages/Leads';
 import { Campanhas } from './pages/Campanhas';
 import { Inbox } from './pages/Inbox';
 import { Monitorar } from './pages/Monitorar';
+import { Funil } from './pages/Funil';
 import { useState } from 'react';
 
 export default function App() {
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="/campaigns" element={<Campanhas />} />
             <Route path="/inbox" element={<Inbox />} />
             <Route path="/monitor" element={<Monitorar />} />
+            <Route path="/funnel" element={<Funil />} />
           </Routes>
         </div>
       </div>

@@ -1,6 +1,59 @@
+import { useState, useEffect } from 'react';
 import { Activity, CheckCircle2, Clock, AlertCircle, Search, Filter } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export function Monitorar() {
+  const [emails, setEmails] = useState<any[]>([]);
+  const [stats, setStats] = useState({ pending: 0, sent: 0, error: 0 });
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    fetchData();
+    // Atualização em tempo real (opcional) ou a cada 10 segundos
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('email_queue')
+        .select(`
+          id,
+          recipient_email,
+          subject,
+          status,
+          error_message,
+          created_at,
+          sent_at,
+          campaign_id,
+          campaigns (name)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      if (data) {
+        setEmails(data);
+        const pending = data.filter(e => e.status === 'pending').length;
+        const sent = data.filter(e => e.status === 'sent').length;
+        const errCount = data.filter(e => e.status === 'error').length;
+        setStats({ pending, sent, error: errCount });
+      }
+    } catch (err) {
+      console.error('Erro ao buscar dados do monitor:', err);
+    }
+  };
+
+  const filteredEmails = emails.filter(e => 
+    e.recipient_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (e.subject && e.subject.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  const deliveryRate = stats.sent + stats.error > 0 
+    ? ((stats.sent / (stats.sent + stats.error)) * 100).toFixed(1) 
+    : '0.0';
+
   return (
     <div className="p-8 text-white min-h-screen bg-background pt-20 premium-gradient">
       <div className="flex justify-between items-end mb-10">
@@ -13,17 +66,15 @@ export function Monitorar() {
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-xs font-bold uppercase tracking-widest text-emerald-500">Motor Ativo</span>
           </div>
-          <div className="h-4 w-px bg-white/10" />
-          <span className="text-xs text-zinc-500">Próximo ciclo em: <span className="text-white font-mono">08:42</span></span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         {[
-          { label: 'Na Fila', value: '1.420', icon: Clock, color: 'text-blue-400' },
-          { label: 'Enviados (Hoje)', value: '458', icon: CheckCircle2, color: 'text-emerald-400' },
-          { label: 'Falhas', value: '12', icon: AlertCircle, color: 'text-red-400' },
-          { label: 'Taxa de Entrega', value: '98.2%', icon: Activity, color: 'text-primary' },
+          { label: 'Na Fila', value: stats.pending, icon: Clock, color: 'text-blue-400' },
+          { label: 'Enviados (Recentes)', value: stats.sent, icon: CheckCircle2, color: 'text-emerald-400' },
+          { label: 'Falhas', value: stats.error, icon: AlertCircle, color: 'text-red-400' },
+          { label: 'Taxa de Entrega', value: `${deliveryRate}%`, icon: Activity, color: 'text-primary' },
         ].map((stat, i) => (
           <div key={i} className="glass p-6 rounded-2xl">
             <div className="flex items-center gap-3 mb-2">
@@ -44,11 +95,14 @@ export function Monitorar() {
           <div className="flex gap-2">
              <div className="relative">
                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" size={14} />
-               <input type="text" placeholder="Buscar lead..." className="bg-white/5 border border-white/5 rounded-lg pl-9 pr-4 py-2 text-xs outline-none focus:ring-1 focus:ring-primary w-64" />
+               <input 
+                 type="text" 
+                 placeholder="Buscar e-mail..." 
+                 value={searchTerm}
+                 onChange={(e) => setSearchTerm(e.target.value)}
+                 className="bg-white/5 border border-white/5 rounded-lg pl-9 pr-4 py-2 text-xs outline-none focus:ring-1 focus:ring-primary w-64 text-white" 
+               />
              </div>
-             <button className="glass p-2 rounded-lg text-zinc-500 hover:text-white transition-colors">
-               <Filter size={16} />
-             </button>
           </div>
         </div>
 
@@ -59,43 +113,43 @@ export function Monitorar() {
                 <th className="px-8 py-4">Destinatário</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Horário</th>
-                <th className="px-6 py-4">ID da Mensagem</th>
+                <th className="px-6 py-4">Campanha</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {[
-                { name: 'Ricardo Santos', company: 'Nexus Holding', status: 'Enviado', time: '13:42:10', id: 'gm_1z2x3c4v5b6n' },
-                { name: 'Ana Oliveira', company: 'Horizon Logistics', status: 'Processando', time: '13:42:08', id: '-' },
-                { name: 'Carlos Mendes', company: 'Vanguard Sol.', status: 'Falha', time: '13:41:55', id: 'ERR_TIMEOUT' },
-                { name: 'Beatriz Costa', company: 'Global Tech', status: 'Enviado', time: '13:41:30', id: 'gm_9a8s7d6f5g4h' },
-              ].map((log, i) => (
-                <tr key={i} className="hover:bg-white/[0.02] transition-colors">
+              {filteredEmails.map((email, i) => (
+                <tr key={email.id || i} className="hover:bg-white/[0.02] transition-colors">
                   <td className="px-8 py-4">
                     <div>
-                      <p className="text-sm font-medium">{log.name}</p>
-                      <p className="text-[10px] text-zinc-500">{log.company}</p>
+                      <p className="text-sm font-medium">{email.recipient_email}</p>
+                      <p className="text-[10px] text-zinc-500 max-w-[200px] truncate" title={email.subject}>{email.subject}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`flex items-center gap-2 text-xs font-medium ${
-                      log.status === 'Enviado' ? 'text-emerald-500' : 
-                      log.status === 'Falha' ? 'text-red-500' : 'text-blue-500'
+                      email.status === 'sent' ? 'text-emerald-500' : 
+                      email.status === 'error' ? 'text-red-500' : 'text-amber-500'
                     }`}>
                       <div className={`w-1.5 h-1.5 rounded-full ${
-                        log.status === 'Enviado' ? 'bg-emerald-500' : 
-                        log.status === 'Falha' ? 'bg-red-500' : 'bg-blue-500 animate-pulse'
+                        email.status === 'sent' ? 'bg-emerald-500' : 
+                        email.status === 'error' ? 'bg-red-500' : 'bg-amber-500 animate-pulse'
                       }`} />
-                      {log.status}
+                      {email.status === 'sent' ? 'Enviado' : email.status === 'error' ? 'Erro' : 'Processando'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-xs font-mono text-zinc-500">
-                    {log.time}
+                    {new Date(email.created_at).toLocaleTimeString()}
                   </td>
-                  <td className="px-6 py-4 text-xs font-mono text-zinc-500">
-                    {log.id}
+                  <td className="px-6 py-4 text-xs text-zinc-500">
+                    {email.campaigns?.name || '---'}
                   </td>
                 </tr>
               ))}
+              {filteredEmails.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-8 py-8 text-center text-zinc-500 italic">Nenhuma atividade recente.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
