@@ -101,6 +101,8 @@ export function ImportCenter() {
             email: row['E-mail'] || row['Email'] || row['email'] || '',
             website: row['Site'] || row['Website'] || row['url'] || '',
             cnae: row['CNAE Principal'] || row['CNAE'] || row['CNAE P'] || '',
+            cnae_description: row['Descrição do CNAE'] || row['Descrição CNAE'] || row['CNAE Descrição'] || (row['CNAE Principal']?.includes(' - ') ? row['CNAE Principal'].split(' - ')[1] : ''),
+            secondary_cnaes: row['CNAEs Secundários'] || row['CNAE Secundário'] || row['CNAEs Secundarios'] || '',
             company_size: porte,
             capital_social: parseFloat(
               String(row['Capital Social da Empresa'] || row['Capital Soc'] || row['Capital Social'] || '0')
@@ -112,9 +114,9 @@ export function ImportCenter() {
             employee_count: row['Quadro de Funcionários'] || row['Quadro de Fun'] || row['Funcionários'] || '',
             active_debts: row['Dívidas Federais Ativas'] || row['Dívidas'] || row['Dividas'] || '',
             registration_status: row['Situação Cad.'] || row['Situação'] || row['Situacao'] || 'ATIVA',
-            activity_start_date: row['Data Início Atv.'] || row['Data Inicio A'] || row['Data Inicio'] || row['Abertura'] || '',
+            activity_start_date: row['Data Início Atv.'] || row['Data Inicio A'] || row['Data Inicio'] || row['Abertura'] || row['Data de Abertura'] || '',
             legal_nature: row['Natureza Jurídica'] || row['Natureza'] || '',
-            tax_regime: row['Regime Tributário'] || row['Regime'] || row['Enquadramento'] || '',
+            tax_regime: row['Regime Tributário'] || row['Regime'] || row['Enquadramento'] || row['Opção pelo Simples'] || row['Simples Nacional'] || '',
             partner_name: row['Nome do Sócio'] || row['Sócio'] || row['Sócio 1'] || row['Responsável'] || '',
             partner_age_range: row['Faixa Etária'] || row['Faixa Etária do Sócio'] || '',
             partner_qualification: row['Qualificação do Sócio'] || row['Qualificação'] || '',
