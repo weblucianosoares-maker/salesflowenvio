@@ -109,6 +109,11 @@ export function ImportCenter() {
             registration_status: row['Situação Cad.'] || row['Situação'] || row['Situacao'] || 'ATIVA',
             activity_start_date: row['Data Início Atv.'] || row['Data Inicio A'] || row['Data Inicio'] || row['Abertura'] || '',
             legal_nature: row['Natureza Jurídica'] || row['Natureza'] || '',
+            tax_regime: row['Regime Tributário'] || row['Regime'] || row['Enquadramento'] || '',
+            partner_name: row['Nome do Sócio'] || row['Sócio'] || row['Sócio 1'] || row['Responsável'] || '',
+            partner_age_range: row['Faixa Etária'] || row['Faixa Etária do Sócio'] || '',
+            partner_qualification: row['Qualificação do Sócio'] || row['Qualificação'] || '',
+            partner_entry_date: row['Data de Entrada'] || row['Data Entrada Sócio'] || row['Data de Entrada do Sócio'] || '',
             status: 'Novo',
             source: 'Importação Manual'
           };

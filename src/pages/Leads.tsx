@@ -86,15 +86,24 @@ export function Leads() {
     }
   };
 
-  const formatDateBR = (dateStr: string) => {
+  const formatDateBR = (dateStr: string | number | null) => {
     if (!dateStr || dateStr === 'N/A') return 'N/A';
-    if (dateStr.includes('/')) return dateStr;
+    
+    // Se for um número (formato serial do Excel)
+    if (typeof dateStr === 'number' || (!isNaN(Number(dateStr)) && !String(dateStr).includes('-') && !String(dateStr).includes('/'))) {
+      const serial = Number(dateStr);
+      const date = new Date(Math.round((serial - 25569) * 86400 * 1000));
+      return date.toLocaleDateString('pt-BR');
+    }
+
+    const str = String(dateStr);
+    if (str.includes('/')) return str;
     try {
-      const [year, month, day] = dateStr.split('-');
-      if (!year || !month || !day) return dateStr;
+      const [year, month, day] = str.split('-');
+      if (!year || !month || !day) return str;
       return `${day}/${month}/${year}`;
     } catch {
-      return dateStr;
+      return str;
     }
   };
 
