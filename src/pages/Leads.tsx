@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Filter, Search, Plus, MoreHorizontal, MapPin, Building2, Briefcase, Loader2, Download, Trash2, X, Phone, Mail, Globe, Database, MessageSquare, Send, Clock, History } from 'lucide-react';
+import { Filter, Search, Plus, MoreHorizontal, MapPin, Building2, Briefcase, Loader2, Download, Trash2, X, Phone, Mail, Globe, Database, MessageSquare, Send, Clock, History, Sparkles, Linkedin, Instagram, Facebook } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 const getMarketFromCNAE = (cnae: string) => {
@@ -56,6 +56,7 @@ export function Leads() {
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
   const [newNote, setNewNote] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false);
 
   const [filterOptions, setFilterOptions] = useState({
     states: [] as string[],
@@ -240,6 +241,34 @@ export function Leads() {
       alert('Falha ao salvar nota.');
     } finally {
       setIsSavingNote(false);
+    }
+  };
+
+  const handleAIEnrichment = async () => {
+    if (!selectedLead) return;
+    
+    setIsEnriching(true);
+    try {
+      // Chamada para a Edge Function de enriquecimento
+      const { data, error } = await supabase.functions.invoke('enrich-lead', {
+        body: { leadId: selectedLead.id }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        const updatedLead = { ...selectedLead, ...data.lead };
+        setSelectedLead(updatedLead);
+        setLeads(prev => prev.map(l => l.id === selectedLead.id ? updatedLead : l));
+        alert('Enriquecimento concluído com sucesso!');
+      } else {
+        throw new Error(data?.error || 'Erro desconhecido');
+      }
+    } catch (error) {
+      console.error('Erro no enriquecimento:', error);
+      alert('Não foi possível enriquecer este lead no momento. Certifique-se de que a função está configurada.');
+    } finally {
+      setIsEnriching(false);
     }
   };
 
@@ -746,12 +775,20 @@ export function Leads() {
               </button>
               <div className="flex gap-4">
                 <button 
+                  onClick={handleAIEnrichment}
+                  disabled={isEnriching}
+                  className="bg-emerald-500 text-white px-6 py-2.5 rounded-xl font-bold hover:brightness-110 transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+                >
+                  {isEnriching ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                  Enriquecer com IA
+                </button>
+                <button 
                   onClick={() => refreshLeadData(selectedLead)}
                   disabled={isUpdating}
                   className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold hover:brightness-110 transition-all flex items-center gap-2 shadow-lg shadow-primary/20"
                 >
                   {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <Database size={18} />}
-                  Atualizar Dados via Receita
+                  Atualizar via Receita
                 </button>
                 <button 
                   onClick={() => handleDeleteLead(selectedLead.id)}
@@ -843,8 +880,42 @@ export function Leads() {
                         </p>
                       </div>
                     )}
+                    {(selectedLead.instagram || selectedLead.linkedin || selectedLead.facebook) && (
+                      <div className="pt-4 border-t border-white/5 space-y-4">
+                        <p className="text-[10px] font-bold text-zinc-600 uppercase">Redes Sociais da Empresa</p>
+                        <div className="flex gap-3">
+                          {selectedLead.instagram && (
+                            <a href={selectedLead.instagram} target="_blank" rel="noreferrer" className="p-2 bg-pink-500/10 text-pink-500 rounded-lg hover:bg-pink-500/20 transition-all">
+                              <Instagram size={18} />
+                            </a>
+                          )}
+                          {selectedLead.linkedin && (
+                            <a href={selectedLead.linkedin} target="_blank" rel="noreferrer" className="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500/20 transition-all">
+                              <Linkedin size={18} />
+                            </a>
+                          )}
+                          {selectedLead.facebook && (
+                            <a href={selectedLead.facebook} target="_blank" rel="noreferrer" className="p-2 bg-blue-600/10 text-blue-600 rounded-lg hover:bg-blue-600/20 transition-all">
+                              <Facebook size={18} />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {selectedLead.ai_summary && (
+                  <div className="glass p-8 rounded-3xl bg-emerald-500/5 border-emerald-500/10">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-emerald-500 flex items-center gap-2 mb-4">
+                      <Sparkles size={16} />
+                      Resumo Estratégico da IA
+                    </h3>
+                    <p className="text-sm text-zinc-300 leading-relaxed italic">
+                      "{selectedLead.ai_summary}"
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Detailed Info */}
@@ -911,7 +982,14 @@ export function Leads() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-y-8 gap-x-12">
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Nome do 1º Sócio</p>
-                      <p className="text-sm font-medium text-white">{selectedLead.partner_name || 'Não informado'}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-white">{selectedLead.partner_name || 'Não informado'}</p>
+                        {selectedLead.partner_linkedin && (
+                          <a href={selectedLead.partner_linkedin} target="_blank" rel="noreferrer" className="text-[#0077b5] hover:brightness-110">
+                            <Linkedin size={16} />
+                          </a>
+                        )}
+                      </div>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">CPF/CNPJ do Sócio</p>
