@@ -33,12 +33,23 @@ export function ImportCenter() {
       let workbook;
       
       if (file.name.toLowerCase().endsWith('.csv')) {
-        const text = new TextDecoder().decode(data);
-        const commaCount = (text.match(/,/g) || []).length;
-        const semiCount = (text.match(/;/g) || []).length;
+        const textUtf8 = new TextDecoder('utf-8').decode(data);
+        const textIso = new TextDecoder('windows-1252').decode(data);
+        
+        // Auto-detectar se o UTF-8 quebrou os acentos (gera o caractere )
+        const hasEncodingIssue = textUtf8.includes('');
+        const textToParse = hasEncodingIssue ? textIso : textUtf8;
+
+        const commaCount = (textToParse.match(/,/g) || []).length;
+        const semiCount = (textToParse.match(/;/g) || []).length;
         const delimiter = semiCount > commaCount ? ';' : ',';
         
-        workbook = XLSX.read(data, { type: 'array', FS: delimiter });
+        // Se houver problema de enconding, forçamos o codepage 1252 no XLSX
+        workbook = XLSX.read(data, { 
+          type: 'array', 
+          FS: delimiter, 
+          ...(hasEncodingIssue && { codepage: 1252 })
+        });
       } else {
         workbook = XLSX.read(data, { type: 'array' });
       }

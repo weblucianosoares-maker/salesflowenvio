@@ -12,6 +12,58 @@ interface EmailConfig {
   interval_minutes: number;
 }
 
+const personalizeEmailText = (templateText: string, lead: any) => {
+  if (!templateText) return '';
+  
+  // 1. Tratamento do Sócio (Filtro de Humanização)
+  let fallbackNome = lead.partner_name || lead.nome_cliente || 'Responsável';
+  const nomeUpperCase = fallbackNome.toUpperCase();
+  const razaoUpperCase = (lead.name || '').toUpperCase();
+  const fantasiaUpperCase = (lead.nome_fantasia || '').toUpperCase();
+  
+  if (
+    nomeUpperCase.includes('LTDA') || 
+    nomeUpperCase.includes('S/A') || 
+    nomeUpperCase.includes('S.A') || 
+    nomeUpperCase === razaoUpperCase ||
+    nomeUpperCase === fantasiaUpperCase ||
+    fallbackNome.length <= 3 || 
+    !isNaN(Number(fallbackNome))
+  ) {
+    fallbackNome = 'Responsável pela ' + (lead.nome_fantasia || lead.name || 'empresa');
+  }
+
+  // 2. Tratamento do CNAE (Filtro de Humanização)
+  let cnaeText = lead.cnae || '';
+  cnaeText = cnaeText.replace(/^[\d\s.-]+(.*?)$/, '$1').trim();
+  if (!cnaeText || cnaeText.length < 4) {
+    cnaeText = 'seu setor de atuação';
+  }
+
+  // 3. Tratamento de Funcionários
+  let funcText = lead.employee_count || '';
+  let funcPhrase = funcText ? `quadro de ${funcText} colaboradores que vocês possuem` : `perfil do seu quadro de funcionários atual`;
+
+  return templateText
+    .replace(/{{Name}}/gi, lead.name || '')
+    .replace(/{{Partner}}/gi, fallbackNome)
+    .replace(/{{City}}/gi, lead.address_city || '')
+    .replace(/{{Sector}}/gi, lead.cnae || '')
+    .replace(/{{Razão}}/gi, lead.name || '')
+    .replace(/{{Fantasia}}/gi, lead.nome_fantasia || lead.name || '')
+    .replace(/{{Nome_do_Sócio}}/gi, fallbackNome)
+    .replace(/{{Cidade}}/gi, lead.address_city || '')
+    .replace(/{{Texto_CNAE_Principal}}/gi, cnaeText)
+    .replace(/{{Porte_Empresa}}/gi, lead.company_size || 'empresa')
+    .replace(/{{Bairro}}/gi, lead.address_neighborhood || 'sua região')
+    // Substituição customizada para a frase de funcionários para não ficar sem sentido se estiver vazia
+    .replace(/quadro de {{Quadro_de_Funcionários}} colaboradores que vocês possuem/gi, funcPhrase)
+    .replace(/{{Quadro_de_Funcionários}}/gi, funcText || 'sua equipe')
+    .replace(/{{Telefone_1}}/gi, lead.phone || '')
+    .replace(/{{Regime_Tributário}}/gi, lead.regime_tributario || 'seu regime atual')
+    .replace(/{{Faturamento_Estimado}}/gi, lead.estimated_revenue || 'seu porte');
+};
+
 export function Campanhas() {
   const [leadCount, setLeadCount] = useState(0);
   const [previewLeads, setPreviewLeads] = useState<any[]>([]);
@@ -64,8 +116,8 @@ export function Campanhas() {
     {
       id: 3,
       name: "Opção 3: Direta e Curta (Mobile)",
-      subject: "Pergunta rápida para o sócio da {{Fantasia}}",
-      body: "Oi, {{Nome_do_Sócio}}, tudo bem?\n\nSou o Luciano, consultor de benefícios. Estou entrando em contato porque vi que a {{Fantasia}} atua em {{Cidade}} e gostaria de saber: quem é a pessoa responsável hoje por revisar os custos de plano de saúde e benefícios dos seus {{Quadro_de_Funcionários}} funcionários?\n\nTenho uma análise de mercado específica para o setor de {{Texto_CNAE_Principal}} que pode interessar vocês.\n\nUm abraço,"
+      subject: "Pergunta rápida para a {{Fantasia}}",
+      body: "Oi, {{Nome_do_Sócio}}, tudo bem?\n\nSou o Luciano, consultor de benefícios. Estou entrando em contato porque vi que a {{Fantasia}} atua em {{Cidade}} e gostaria de saber: quem é a pessoa responsável hoje por revisar os custos de plano de saúde e benefícios de {{Quadro_de_Funcionários}}?\n\nTenho uma análise de mercado específica para {{Texto_CNAE_Principal}} que pode interessar vocês.\n\nUm abraço,"
     }
   ];
 
@@ -100,7 +152,8 @@ export function Campanhas() {
   }, [filters]);
 
   const buildQuery = (queryObj: any) => {
-    let q = queryObj;
+    // Filtro básico para o contador: só aceita leads que tenham pelo menos um '@' no campo de e-mail
+    let q = queryObj.ilike('email', '%@%');
     if (filters.city && filters.city.length > 0) q = q.in('address_city', filters.city);
     if (filters.neighborhood && filters.neighborhood.length > 0) q = q.in('address_neighborhood', filters.neighborhood);
     if (filters.cnae && filters.cnae.length > 0) q = q.in('cnae', filters.cnae);
@@ -198,40 +251,21 @@ export function Campanhas() {
 
         if (lError) throw lError;
 
-        // 3. Preparar a fila (em lotes para não travar o navegador)
-        const queueItems = leads.map(lead => {
-          // Lógica de Fallback (Dica do Vibe Code)
-          let fallbackNome = lead.partner_name || lead.nome_cliente || 'Responsável';
-          if (fallbackNome.length <= 3 || !isNaN(Number(fallbackNome))) {
-            fallbackNome = 'Responsável pela ' + (lead.nome_fantasia || lead.name || 'empresa');
-          }
+        // 3. Validação Estrita de E-mail via Regex
+        const validLeads = leads.filter(lead => {
+          return lead.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead.email);
+        });
 
-          let personalizedBody = message
-            .replace(/{{Name}}/gi, lead.name || '')
-            .replace(/{{Partner}}/gi, fallbackNome)
-            .replace(/{{City}}/gi, lead.address_city || '')
-            .replace(/{{Sector}}/gi, lead.cnae || '')
-            .replace(/{{Razão}}/gi, lead.name || '')
-            .replace(/{{Fantasia}}/gi, lead.nome_fantasia || lead.name || '')
-            .replace(/{{Nome_do_Sócio}}/gi, fallbackNome)
-            .replace(/{{Cidade}}/gi, lead.address_city || '')
-            .replace(/{{Texto_CNAE_Principal}}/gi, lead.cnae || '')
-            .replace(/{{Porte_Empresa}}/gi, lead.company_size || 'empresa')
-            .replace(/{{Bairro}}/gi, lead.address_neighborhood || 'sua região')
-            .replace(/{{Quadro_de_Funcionários}}/gi, lead.employee_count || 'seus')
-            .replace(/{{Telefone_1}}/gi, lead.phone || '')
-            .replace(/{{Regime_Tributário}}/gi, lead.regime_tributario || 'seu regime atual')
-            .replace(/{{Faturamento_Estimado}}/gi, lead.estimated_revenue || 'seu porte');
+        if (validLeads.length === 0) {
+          alert('Nenhum dos leads filtrados possui um e-mail válido.');
+          setIsSaving(false);
+          return;
+        }
 
-          let personalizedSubject = subject
-            .replace(/{{Name}}/gi, lead.name || '')
-            .replace(/{{Partner}}/gi, fallbackNome)
-            .replace(/{{City}}/gi, lead.address_city || '')
-            .replace(/{{Sector}}/gi, lead.cnae || '')
-            .replace(/{{Razão}}/gi, lead.name || '')
-            .replace(/{{Fantasia}}/gi, lead.nome_fantasia || lead.name || '')
-            .replace(/{{Nome_do_Sócio}}/gi, fallbackNome)
-            .replace(/{{Cidade}}/gi, lead.address_city || '');
+        // 4. Preparar a fila (em lotes para não travar o navegador)
+        const queueItems = validLeads.map(lead => {
+          let personalizedBody = personalizeEmailText(message, lead);
+          let personalizedSubject = personalizeEmailText(subject, lead);
 
           return {
             campaign_id: campaign.id,
@@ -603,37 +637,9 @@ export function Campanhas() {
             
             {previewLeads.length > 0 ? (() => {
                const lead = previewLeads[currentPreviewIndex];
-               let fallbackNome = lead.partner_name || lead.nome_cliente || 'Responsável';
-               if (fallbackNome.length <= 3 || !isNaN(Number(fallbackNome))) {
-                 fallbackNome = 'Responsável pela ' + (lead.nome_fantasia || lead.name || 'empresa');
-               }
-
-               let personalizedBody = message
-                 .replace(/{{Name}}/gi, lead.name || '')
-                 .replace(/{{Partner}}/gi, fallbackNome)
-                 .replace(/{{City}}/gi, lead.address_city || '')
-                 .replace(/{{Sector}}/gi, lead.cnae || '')
-                 .replace(/{{Razão}}/gi, lead.name || '')
-                 .replace(/{{Fantasia}}/gi, lead.nome_fantasia || lead.name || '')
-                 .replace(/{{Nome_do_Sócio}}/gi, fallbackNome)
-                 .replace(/{{Cidade}}/gi, lead.address_city || '')
-                 .replace(/{{Texto_CNAE_Principal}}/gi, lead.cnae || '')
-                 .replace(/{{Porte_Empresa}}/gi, lead.company_size || 'empresa')
-                 .replace(/{{Bairro}}/gi, lead.address_neighborhood || 'sua região')
-                 .replace(/{{Quadro_de_Funcionários}}/gi, lead.employee_count || 'seus')
-                 .replace(/{{Telefone_1}}/gi, lead.phone || '')
-                 .replace(/{{Regime_Tributário}}/gi, lead.regime_tributario || 'seu regime atual')
-                 .replace(/{{Faturamento_Estimado}}/gi, lead.estimated_revenue || 'seu porte');
-
-               let personalizedSubject = subject
-                 .replace(/{{Name}}/gi, lead.name || '')
-                 .replace(/{{Partner}}/gi, fallbackNome)
-                 .replace(/{{City}}/gi, lead.address_city || '')
-                 .replace(/{{Sector}}/gi, lead.cnae || '')
-                 .replace(/{{Razão}}/gi, lead.name || '')
-                 .replace(/{{Fantasia}}/gi, lead.nome_fantasia || lead.name || '')
-                 .replace(/{{Nome_do_Sócio}}/gi, fallbackNome)
-                 .replace(/{{Cidade}}/gi, lead.address_city || '');
+               
+               let personalizedBody = personalizeEmailText(message, lead);
+               let personalizedSubject = personalizeEmailText(subject, lead);
 
                return (
                  <div className="flex-1 bg-[#121316] border border-white/5 rounded-2xl p-6 overflow-y-auto custom-scrollbar">

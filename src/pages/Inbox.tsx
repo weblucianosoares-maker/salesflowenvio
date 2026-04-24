@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mail, RefreshCw, CheckCircle2, Clock, AlertCircle, Trash2, Send } from 'lucide-react';
+import { Mail, RefreshCw, CheckCircle2, Clock, AlertCircle, Trash2, Send, X, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export function Inbox() {
@@ -7,6 +7,7 @@ export function Inbox() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [stats, setStats] = useState({ pending: 0, sent: 0, error: 0 });
+  const [selectedEmail, setSelectedEmail] = useState<any | null>(null);
 
   useEffect(() => {
     fetchEmails();
@@ -153,7 +154,11 @@ export function Inbox() {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {emails.map((email) => (
-                  <tr key={email.id} className="hover:bg-white/[0.02] transition-colors">
+                  <tr 
+                    key={email.id} 
+                    onClick={() => setSelectedEmail(email)}
+                    className="hover:bg-white/[0.02] transition-colors cursor-pointer"
+                  >
                     <td className="px-8 py-4 text-sm font-medium text-white">{email.recipient_email}</td>
                     <td className="px-6 py-4 text-sm text-zinc-300 max-w-[200px] truncate" title={email.subject}>
                       {email.subject}
@@ -174,9 +179,17 @@ export function Inbox() {
                       {new Date(email.created_at).toLocaleString()}
                     </td>
                     <td className="px-8 py-4 text-right">
-                      <button onClick={() => deleteEmail(email.id)} className="text-zinc-600 hover:text-red-500 transition-colors">
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="flex items-center justify-end gap-3">
+                        <button className="text-zinc-500 hover:text-primary transition-colors">
+                          <Eye size={16} />
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); deleteEmail(email.id); }} 
+                          className="text-zinc-600 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -185,6 +198,62 @@ export function Inbox() {
           </div>
         )}
       </div>
+
+      {/* Modal Leitor de E-mail */}
+      {selectedEmail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-[#121316] border border-white/10 rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl shadow-black/50">
+            <div className="p-4 border-b border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Mail className="text-primary" size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white leading-tight">Leitor de E-mail</h3>
+                  <p className="text-[10px] text-zinc-500 uppercase tracking-widest">{selectedEmail.campaigns?.name}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedEmail(null)}
+                className="p-2 text-zinc-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="p-4 bg-white/5 border border-white/5 rounded-xl">
+                  <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Destinatário:</p>
+                  <p className="text-sm font-bold text-blue-400">{selectedEmail.recipient_email}</p>
+                </div>
+                <div className="p-4 bg-white/5 border border-white/5 rounded-xl">
+                  <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Status do Envio:</p>
+                  <p className="text-sm font-medium">
+                    {selectedEmail.status === 'sent' && <span className="text-emerald-500">Enviado com sucesso</span>}
+                    {selectedEmail.status === 'pending' && <span className="text-amber-500">Na fila de processamento</span>}
+                    {selectedEmail.status === 'error' && <span className="text-red-500">Falha ao enviar</span>}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Assunto:</p>
+                <div className="w-full bg-white/5 border border-white/5 rounded-xl p-4 text-white text-sm font-bold">
+                  {selectedEmail.subject}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Mensagem do E-mail:</p>
+                <div className="w-full bg-white/5 border border-white/5 rounded-xl p-6 text-zinc-300 text-sm whitespace-pre-wrap leading-relaxed">
+                  {selectedEmail.body_html?.replace(/<br\s*\/?>/gi, '\n') || 'Conteúdo indisponível.'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
