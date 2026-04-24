@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { Filter, Search, Plus, MoreHorizontal, MapPin, Building2, Briefcase, Loader2, Download, Trash2, X, Phone, Mail, Globe, Database, MessageSquare, Send, Clock, History, Sparkles, Linkedin, Instagram, Facebook } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-const getMarketFromCNAE = (cnae: string) => {
+const getMarketFromCNAE = (cnae: any) => {
   if (!cnae) return 'Não identificado';
-  const code = cnae.replace(/\D/g, '').substring(0, 2);
+  const str = String(cnae);
+  const code = str.replace(/\D/g, '').substring(0, 2);
   const div = parseInt(code);
 
   if (div >= 1 && div <= 3) return 'Agronegócio';
@@ -30,11 +31,11 @@ const getMarketFromCNAE = (cnae: string) => {
   return 'Serviços Gerais';
 };
 
-const sanitizeText = (text: string | null) => {
+const sanitizeText = (text: any) => {
   if (!text) return '';
+  const str = String(text);
   // Remove o caractere de substituição Unicode e outros artefatos de encoding comuns
-  // Incluindo o losango com interrogação e caracteres de controle
-  return text.replace(/[\uFFFD\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim();
+  return str.replace(/[\uFFFD\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim();
 };
 
 export function Leads() {

@@ -101,7 +101,7 @@ export function ImportCenter() {
             email: row['E-mail'] || row['Email'] || row['email'] || '',
             website: row['Site'] || row['Website'] || row['url'] || '',
             cnae: row['CNAE Principal'] || row['CNAE'] || row['CNAE P'] || '',
-            cnae_description: row['Descrição do CNAE'] || row['Descrição CNAE'] || row['CNAE Descrição'] || (row['CNAE Principal']?.includes(' - ') ? row['CNAE Principal'].split(' - ')[1] : ''),
+            cnae_description: row['Descrição do CNAE'] || row['Descrição CNAE'] || row['CNAE Descrição'] || (String(row['CNAE Principal'] || '').includes(' - ') ? String(row['CNAE Principal']).split(' - ')[1] : ''),
             secondary_cnaes: row['CNAEs Secundários'] || row['CNAE Secundário'] || row['CNAEs Secundarios'] || '',
             company_size: porte,
             capital_social: parseFloat(
