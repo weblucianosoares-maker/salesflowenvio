@@ -53,32 +53,54 @@ export function ImportCenter() {
       const allMappedLeads: any[] = [];
       const CHUNK_SIZE_PROCESSING = 500;
       
+      // Função para tratar números científicos do Excel (ex: 2.199E+10)
+      const formatExcelNumber = (val: any) => {
+        if (!val) return '';
+        const str = String(val);
+        if (str.includes('E+') || str.includes('e+')) {
+          return Number(val).toLocaleString('fullwide', {useGrouping:false});
+        }
+        return str;
+      };
+
       for (let i = 0; i < jsonData.length; i += CHUNK_SIZE_PROCESSING) {
         const chunk = jsonData.slice(i, i + CHUNK_SIZE_PROCESSING);
-        const mappedChunk = chunk.map(row => ({
-          cnpj: String(row['CNPJ'] || row['cnpj'] || '').replace(/\D/g, ''),
-          name: row['Razão'] || row['Razão Social'] || row['Nome'] || row['Fantasia'] || 'Sem Nome',
-          nome_cliente: row['Razão'] || row['Razão Social'] || row['Nome'] || row['Fantasia'] || 'Sem Nome',
-          nome_fantasia: row['Fantasia'] || row['Nome Fantasia'],
-          address_street: row['Endereço'] || row['Logradouro'],
-          address_number: String(row['Número'] || ''),
-          address_neighborhood: row['Bairro'],
-          address_city: row['Cidade'] || row['Município'],
-          address_state: row['UF'] || row['Estado'],
-          address_zip: String(row['CEP'] || ''),
-          phone: String(row['Telefone 1'] || row['Telefone'] || row['Celular'] || ''),
-          phone_2: String(row['Telefone 2'] || ''),
-          email: row['E-mail'] || row['Email'] || row['email'],
-          website: row['Site'] || row['Website'] || row['url'],
-          cnae: row['CNAE Principal'] || row['CNAE'],
-          company_size: row['Porte Empresa'] || row['Porte'] || row['Porte da Empresa'],
-          capital_social: parseFloat(String(row['Capital Social'] || '0').replace(/[^\d.]/g, '')) || 0,
-          estimated_revenue: row['Faturamento'] || row['Faixa de Faturamento'],
-          employee_count: row['Funcionários'] || row['Qtd Funcionários'] || row['Nº de Funcionários'],
-          registration_status: row['Situação Cad.'] || row['Situação'],
-          status: 'Novo',
-          source: 'Importação Manual'
-        })).filter(lead => lead.cnpj && lead.cnpj.length >= 14);
+        const mappedChunk = chunk.map(row => {
+          // Normalização de porte para bater com nossos filtros
+          let porteRaw = row['Porte E'] || row['Porte'] || row['Porte Empresa'] || row['Porte da Empresa'] || 'N/A';
+          let porte = String(porteRaw).toUpperCase();
+          if (porte.includes('MICRO EM')) porte = 'MICRO EMPRESA';
+          else if (porte.includes('MEI')) porte = 'MEI';
+          else if (porte.includes('EPP')) porte = 'EPP';
+          else if (porte.includes('DEMAIS')) porte = 'DEMAIS (MÉDIO/GRANDE)';
+
+          return {
+            cnpj: String(row['CNPJ'] || row['cnpj'] || '').replace(/\D/g, ''),
+            name: row['Razão'] || row['Razão Social'] || row['Nome'] || row['Fantasia'] || 'Sem Nome',
+            nome_cliente: row['Razão'] || row['Razão Social'] || row['Nome'] || row['Fantasia'] || 'Sem Nome',
+            nome_fantasia: row['Fantasia'] || row['Nome Fantasia'] || '',
+            address_street: row['Endereço'] || row['Logradouro'] || '',
+            address_number: String(row['Número'] || row['Numero'] || row['Num'] || ''),
+            address_neighborhood: row['Bairro'] || '',
+            address_city: row['Cidade'] || row['Município'] || '',
+            address_state: row['UF'] || row['Estado'] || '',
+            address_zip: String(row['CEP'] || '').replace(/\D/g, ''),
+            phone: formatExcelNumber(row['Telefone 1'] || row['Telefone'] || row['Celular'] || ''),
+            phone_2: formatExcelNumber(row['Telefone 2'] || ''),
+            email: row['E-mail'] || row['Email'] || row['email'] || '',
+            website: row['Site'] || row['Website'] || row['url'] || '',
+            cnae: row['CNAE Principal'] || row['CNAE'] || row['CNAE P'] || '',
+            company_size: porte,
+            capital_social: parseFloat(String(row['Capital Soc'] || row['Capital Social'] || '0').replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
+            estimated_revenue: row['Faturam. Est'] || row['Faturamento'] || row['Faturamento Estimado'] || '',
+            employee_count: row['Quadro de Fun'] || row['Funcionários'] || row['Quadro de Funcionários'] || '',
+            registration_status: row['Situação Cad.'] || row['Situação'] || row['Situacao'] || 'ATIVA',
+            activity_start_date: row['Data Inicio A'] || row['Data Inicio'] || row['Abertura'] || '',
+            legal_nature: row['Natureza Juridica'] || row['Natureza'] || '',
+            status: 'Novo',
+            source: 'Importação Manual'
+          };
+        }).filter(lead => lead.cnpj && lead.cnpj.length >= 14);
 
         allMappedLeads.push(...mappedChunk);
         await new Promise(resolve => setTimeout(resolve, 0));
