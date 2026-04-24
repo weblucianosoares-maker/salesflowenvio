@@ -30,15 +30,23 @@ const getMarketFromCNAE = (cnae: string) => {
   return 'Serviços Gerais';
 };
 
+const sanitizeText = (text: string | null) => {
+  if (!text) return '';
+  // Remove o caractere de substituição Unicode e outros artefatos de encoding comuns
+  return text.replace(/[\uFFFD\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim();
+};
+
 export function Leads() {
   const [leads, setLeads] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterState, setFilterState] = useState('Todos os Estados');
-  const [filterCity, setFilterCity] = useState('');
-  const [filterNeighborhood, setFilterNeighborhood] = useState('');
+  const [filterCity, setFilterCity] = useState('Todas as Cidades');
+  const [filterNeighborhood, setFilterNeighborhood] = useState('Todos os Bairros');
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
+  const [revenueRange, setRevenueRange] = useState(50000000);
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
@@ -48,6 +56,13 @@ export function Leads() {
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
   const [newNote, setNewNote] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
+
+  const [filterOptions, setFilterOptions] = useState({
+    states: [] as string[],
+    cities: [] as string[],
+    neighborhoods: [] as string[],
+    sectors: [] as string[]
+  });
 
   const ITEMS_PER_PAGE = 10;
 
@@ -84,7 +99,7 @@ export function Leads() {
   useEffect(() => {
     setPage(0);
     fetchLeads();
-  }, [searchTerm, filterState, filterCity, filterNeighborhood, selectedSizes]);
+  }, [searchTerm, filterState, filterCity, filterNeighborhood, selectedSizes, selectedSectors, revenueRange]);
 
   useEffect(() => {
     fetchLeads();
@@ -101,6 +116,87 @@ export function Leads() {
       return () => clearTimeout(timer);
     }
   }, [selectedLead?.id, viewMode]);
+
+  useEffect(() => {
+    fetchInitialFilterOptions();
+  }, []);
+
+  useEffect(() => {
+    if (filterState !== 'Todos os Estados') {
+      fetchCities(filterState);
+    } else {
+      setFilterOptions(prev => ({ ...prev, cities: [], neighborhoods: [] }));
+      setFilterCity('Todas as Cidades');
+      setFilterNeighborhood('Todos os Bairros');
+    }
+  }, [filterState]);
+
+  useEffect(() => {
+    if (filterCity !== 'Todas as Cidades') {
+      fetchNeighborhoods(filterCity);
+    } else {
+      setFilterOptions(prev => ({ ...prev, neighborhoods: [] }));
+      setFilterNeighborhood('Todos os Bairros');
+    }
+  }, [filterCity]);
+
+  const fetchInitialFilterOptions = async () => {
+    try {
+      const { data: stateData } = await supabase.rpc('get_distinct_values', { col_name: 'address_state' });
+      const { data: sectorData } = await supabase.rpc('get_distinct_values', { col_name: 'sector' });
+      
+      // Se o RPC não existir, usamos uma query normal (menos eficiente mas funciona)
+      if (!stateData) {
+        const { data: sData } = await supabase.from('leads').select('address_state').not('address_state', 'is', null).order('address_state');
+        const uniqueStates = Array.from(new Set(sData?.map(i => i.address_state))).filter(Boolean) as string[];
+        
+        const { data: secData } = await supabase.from('leads').select('sector').not('sector', 'is', null).order('sector');
+        const uniqueSectors = Array.from(new Set(secData?.map(i => i.sector))).filter(Boolean) as string[];
+
+        setFilterOptions(prev => ({ ...prev, states: uniqueStates, sectors: uniqueSectors }));
+      } else {
+        setFilterOptions(prev => ({ 
+          ...prev, 
+          states: stateData.map((i: any) => i.value),
+          sectors: sectorData.map((i: any) => i.value)
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching filter options:', error);
+    }
+  };
+
+  const fetchCities = async (state: string) => {
+    try {
+      const { data } = await supabase
+        .from('leads')
+        .select('address_city')
+        .eq('address_state', state)
+        .not('address_city', 'is', null)
+        .order('address_city');
+      
+      const uniqueCities = Array.from(new Set(data?.map(i => i.address_city))).filter(Boolean) as string[];
+      setFilterOptions(prev => ({ ...prev, cities: uniqueCities }));
+    } catch (error) {
+      console.error('Error fetching cities:', error);
+    }
+  };
+
+  const fetchNeighborhoods = async (city: string) => {
+    try {
+      const { data } = await supabase
+        .from('leads')
+        .select('address_neighborhood')
+        .eq('address_city', city)
+        .not('address_neighborhood', 'is', null)
+        .order('address_neighborhood');
+      
+      const uniqueNeighborhoods = Array.from(new Set(data?.map(i => i.address_neighborhood))).filter(Boolean) as string[];
+      setFilterOptions(prev => ({ ...prev, neighborhoods: uniqueNeighborhoods }));
+    } catch (error) {
+      console.error('Error fetching neighborhoods:', error);
+    }
+  };
 
   const fetchActivities = async (leadId: string) => {
     setIsLoadingActivities(true);
@@ -169,16 +265,24 @@ export function Leads() {
         query = query.eq('address_state', uf);
       }
 
-      if (filterCity) {
-        query = query.ilike('address_city', `%${filterCity}%`);
+      if (filterCity !== 'Todas as Cidades') {
+        query = query.eq('address_city', filterCity);
       }
 
-      if (filterNeighborhood) {
-        query = query.ilike('address_neighborhood', `%${filterNeighborhood}%`);
+      if (filterNeighborhood !== 'Todos os Bairros') {
+        query = query.eq('address_neighborhood', filterNeighborhood);
       }
 
       if (selectedSizes.length > 0) {
         query = query.in('company_size', selectedSizes);
+      }
+
+      if (selectedSectors.length > 0) {
+        query = query.in('sector', selectedSectors);
+      }
+
+      if (revenueRange < 50000000) {
+        query = query.lte('capital_social', revenueRange);
       }
 
       const from = page * ITEMS_PER_PAGE;
@@ -345,10 +449,12 @@ export function Leads() {
             <button 
               onClick={() => {
                 setFilterState('Todos os Estados');
-                setFilterCity('');
-                setFilterNeighborhood('');
+                setFilterCity('Todas as Cidades');
+                setFilterNeighborhood('Todos os Bairros');
                 setSearchTerm('');
                 setSelectedSizes([]);
+                setSelectedSectors([]);
+                setRevenueRange(50000000);
                 setPage(0);
               }}
               className="text-xs text-zinc-500 hover:text-white transition-colors"
@@ -367,56 +473,60 @@ export function Leads() {
                   className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer"
                 >
                   <option value="Todos os Estados" className="bg-[#1a1a1c] text-white">Todos os Estados</option>
-                  <option value="Acre, AC" className="bg-[#1a1a1c] text-white">Acre, AC</option>
-                  <option value="Alagoas, AL" className="bg-[#1a1a1c] text-white">Alagoas, AL</option>
-                  <option value="Amapá, AP" className="bg-[#1a1a1c] text-white">Amapá, AP</option>
-                  <option value="Amazonas, AM" className="bg-[#1a1a1c] text-white">Amazonas, AM</option>
-                  <option value="Bahia, BA" className="bg-[#1a1a1c] text-white">Bahia, BA</option>
-                  <option value="Ceará, CE" className="bg-[#1a1a1c] text-white">Ceará, CE</option>
-                  <option value="Distrito Federal, DF" className="bg-[#1a1a1c] text-white">Distrito Federal, DF</option>
-                  <option value="Espírito Santo, ES" className="bg-[#1a1a1c] text-white">Espírito Santo, ES</option>
-                  <option value="Goiás, GO" className="bg-[#1a1a1c] text-white">Goiás, GO</option>
-                  <option value="Maranhão, MA" className="bg-[#1a1a1c] text-white">Maranhão, MA</option>
-                  <option value="Mato Grosso, MT" className="bg-[#1a1a1c] text-white">Mato Grosso, MT</option>
-                  <option value="Mato Grosso do Sul, MS" className="bg-[#1a1a1c] text-white">Mato Grosso do Sul, MS</option>
-                  <option value="Minas Gerais, MG" className="bg-[#1a1a1c] text-white">Minas Gerais, MG</option>
-                  <option value="Pará, PA" className="bg-[#1a1a1c] text-white">Pará, PA</option>
-                  <option value="Paraíba, PB" className="bg-[#1a1a1c] text-white">Paraíba, PB</option>
-                  <option value="Paraná, PR" className="bg-[#1a1a1c] text-white">Paraná, PR</option>
-                  <option value="Pernambuco, PE" className="bg-[#1a1a1c] text-white">Pernambuco, PE</option>
-                  <option value="Piauí, PI" className="bg-[#1a1a1c] text-white">Piauí, PI</option>
-                  <option value="Rio de Janeiro, RJ" className="bg-[#1a1a1c] text-white">Rio de Janeiro, RJ</option>
-                  <option value="Rio Grande do Norte, RN" className="bg-[#1a1a1c] text-white">Rio Grande do Norte, RN</option>
-                  <option value="Rio Grande do Sul, RS" className="bg-[#1a1a1c] text-white">Rio Grande do Sul, RS</option>
-                  <option value="Rondônia, RO" className="bg-[#1a1a1c] text-white">Rondônia, RO</option>
-                  <option value="Roraima, RR" className="bg-[#1a1a1c] text-white">Roraima, RR</option>
-                  <option value="Santa Catarina, SC" className="bg-[#1a1a1c] text-white">Santa Catarina, SC</option>
-                  <option value="São Paulo, SP" className="bg-[#1a1a1c] text-white">São Paulo, SP</option>
-                  <option value="Sergipe, SE" className="bg-[#1a1a1c] text-white">Sergipe, SE</option>
-                  <option value="Tocantins, TO" className="bg-[#1a1a1c] text-white">Tocantins, TO</option>
+                  {filterOptions.states.map(state => (
+                    <option key={state} value={state} className="bg-[#1a1a1c] text-white">{state}</option>
+                  ))}
                 </select>
 
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" size={14} />
-                  <input 
-                    type="text" 
-                    placeholder="Cidade..."
-                    value={filterCity}
-                    onChange={(e) => setFilterCity(e.target.value)}
-                    className="w-full bg-white/5 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-xs text-white focus:ring-1 focus:ring-primary outline-none"
-                  />
-                </div>
+                <select 
+                  value={filterCity}
+                  onChange={(e) => setFilterCity(e.target.value)}
+                  disabled={filterState === 'Todos os Estados'}
+                  className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer disabled:opacity-30"
+                >
+                  <option value="Todas as Cidades" className="bg-[#1a1a1c] text-white">Todas as Cidades</option>
+                  {filterOptions.cities.map(city => (
+                    <option key={city} value={city} className="bg-[#1a1a1c] text-white">{city}</option>
+                  ))}
+                </select>
 
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" size={14} />
-                  <input 
-                    type="text" 
-                    placeholder="Bairro..."
-                    value={filterNeighborhood}
-                    onChange={(e) => setFilterNeighborhood(e.target.value)}
-                    className="w-full bg-white/5 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-xs text-white focus:ring-1 focus:ring-primary outline-none"
-                  />
-                </div>
+                <select 
+                  value={filterNeighborhood}
+                  onChange={(e) => setFilterNeighborhood(e.target.value)}
+                  disabled={filterCity === 'Todas as Cidades'}
+                  className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer disabled:opacity-30"
+                >
+                  <option value="Todos os Bairros" className="bg-[#1a1a1c] text-white">Todos os Bairros</option>
+                  {filterOptions.neighborhoods.map(neighborhood => (
+                    <option key={neighborhood} value={neighborhood} className="bg-[#1a1a1c] text-white">{neighborhood}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-3">Mercado de Atuação</label>
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                {filterOptions.sectors.map((sector) => (
+                  <label key={sector} className="flex items-center gap-3 cursor-pointer group">
+                    <input 
+                      type="checkbox"
+                      checked={selectedSectors.includes(sector)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedSectors(prev => [...prev, sector]);
+                        } else {
+                          setSelectedSectors(prev => prev.filter(s => s !== sector));
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <div className={`w-4 h-4 rounded border ${selectedSectors.includes(sector) ? 'bg-primary border-primary' : 'border-white/10'} group-hover:border-primary/50 transition-colors flex items-center justify-center`}>
+                      {selectedSectors.includes(sector) && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <span className={`text-[11px] ${selectedSectors.includes(sector) ? 'text-white font-medium' : 'text-zinc-400'} group-hover:text-white transition-colors`}>{sector}</span>
+                  </label>
+                ))}
               </div>
             </div>
 
@@ -447,11 +557,19 @@ export function Leads() {
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-3">Faixa de Faturamento</label>
-              <input type="range" className="w-full accent-primary bg-white/5 h-1.5 rounded-full appearance-none cursor-pointer" />
+              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-3">Faixa de Capital Social</label>
+              <input 
+                type="range" 
+                min="0"
+                max="50000000"
+                step="100000"
+                value={revenueRange}
+                onChange={(e) => setRevenueRange(parseInt(e.target.value))}
+                className="w-full accent-primary bg-white/5 h-1.5 rounded-full appearance-none cursor-pointer" 
+              />
               <div className="flex justify-between mt-2 text-[10px] text-zinc-500 font-bold uppercase tracking-tighter">
                 <span>R$ 0</span>
-                <span>R$ 50M+</span>
+                <span>{revenueRange >= 50000000 ? 'R$ 50M+' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(revenueRange)}</span>
               </div>
             </div>
           </div>
@@ -739,7 +857,7 @@ export function Leads() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-y-8 gap-x-12">
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Razão Social</p>
-                      <p className="text-sm font-medium text-white">{selectedLead.name || selectedLead.nome_cliente}</p>
+                      <p className="text-sm font-medium text-white">{sanitizeText(selectedLead.name || selectedLead.nome_cliente)}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Setor de Atuação</p>
@@ -755,11 +873,11 @@ export function Leads() {
                     </div>
                     <div className="col-span-full space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descrição do CNAE</p>
-                      <p className="text-sm font-medium text-zinc-300 leading-relaxed">{selectedLead.cnae_description || 'N/A'}</p>
+                      <p className="text-sm font-medium text-zinc-300 leading-relaxed">{sanitizeText(selectedLead.cnae_description) || 'N/A'}</p>
                     </div>
                     <div className="col-span-full space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">CNAEs Secundários</p>
-                      <p className="text-xs text-zinc-400 leading-relaxed">{selectedLead.secondary_cnaes || 'Nenhum informado'}</p>
+                      <p className="text-xs text-zinc-400 leading-relaxed">{sanitizeText(selectedLead.secondary_cnaes) || 'Nenhum informado'}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Início da Atividade</p>
