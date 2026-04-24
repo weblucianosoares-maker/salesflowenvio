@@ -149,7 +149,7 @@ export function Campanhas() {
     <div className="p-8 text-white min-h-screen bg-background pt-20 premium-gradient">
       <div className="flex justify-between items-center mb-10">
         <div>
-          <h2 className="text-4xl font-bold tracking-tight mb-2">Campanhas</h2>
+          <h2 className="text-4xl font-bold tracking-tight mb-2">Campanhas de E-mail</h2>
           <p className="text-metal-silver font-medium opacity-60">Crie sequências de e-mail personalizadas com lógica de gotejamento.</p>
         </div>
         <div className="flex gap-4">
