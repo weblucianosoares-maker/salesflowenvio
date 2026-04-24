@@ -1,6 +1,34 @@
 import { useState, useEffect } from 'react';
-import { Filter, Search, Plus, MoreHorizontal, MapPin, Building2, Briefcase, Loader2, Download, Trash2, X, Phone, Mail, Globe, Database } from 'lucide-react';
+import { Filter, Search, Plus, MoreHorizontal, MapPin, Building2, Briefcase, Loader2, Download, Trash2, X, Phone, Mail, Globe, Database, MessageSquare, Send, Clock, History } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+
+const getMarketFromCNAE = (cnae: string) => {
+  if (!cnae) return 'Não identificado';
+  const code = cnae.replace(/\D/g, '').substring(0, 2);
+  const div = parseInt(code);
+
+  if (div >= 1 && div <= 3) return 'Agronegócio';
+  if (div >= 5 && div <= 9) return 'Mineração';
+  if (div >= 10 && div <= 33) return 'Indústria';
+  if (div >= 35 && div <= 39) return 'Utilidades e Infraestrutura';
+  if (div >= 41 && div <= 43) return 'Construção Civil';
+  if (div >= 45 && div <= 47) return 'Comércio e Varejo';
+  if (div >= 49 && div <= 53) return 'Transporte e Logística';
+  if (div >= 55 && div <= 56) return 'Turismo e Gastronomia';
+  if (div >= 58 && div <= 63) return 'Tecnologia e Comunicação';
+  if (div >= 64 && div <= 66) return 'Financeiro e Seguros';
+  if (div >= 68) {
+    if (div === 68) return 'Imobiliário';
+    if (div >= 69 && div <= 75) return 'Serviços Profissionais';
+    if (div >= 77 && div <= 82) return 'Serviços Administrativos';
+    if (div === 84) return 'Setor Público';
+    if (div === 85) return 'Educação';
+    if (div >= 86 && div <= 88) return 'Saúde';
+    if (div >= 90 && div <= 93) return 'Lazer e Cultura';
+    if (div >= 94 && div <= 96) return 'Serviços Pessoais';
+  }
+  return 'Serviços Gerais';
+};
 
 export function Leads() {
   const [leads, setLeads] = useState<any[]>([]);
@@ -16,6 +44,10 @@ export function Leads() {
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [isLoadingActivities, setIsLoadingActivities] = useState(false);
+  const [newNote, setNewNote] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
 
   const ITEMS_PER_PAGE = 10;
 
@@ -64,10 +96,56 @@ export function Leads() {
       // Pequeno delay para não sobrepor a animação de abertura
       const timer = setTimeout(() => {
         refreshLeadData(selectedLead);
+        fetchActivities(selectedLead.id);
       }, 500);
       return () => clearTimeout(timer);
     }
   }, [selectedLead?.id, viewMode]);
+
+  const fetchActivities = async (leadId: string) => {
+    setIsLoadingActivities(true);
+    try {
+      const { data, error } = await supabase
+        .from('lead_activities')
+        .select('*')
+        .eq('lead_id', leadId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setActivities(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar atividades:', error);
+    } finally {
+      setIsLoadingActivities(false);
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!newNote.trim() || !selectedLead) return;
+
+    setIsSavingNote(true);
+    try {
+      const { data, error } = await supabase
+        .from('lead_activities')
+        .insert({
+          lead_id: selectedLead.id,
+          activity_type: 'note',
+          content: newNote.trim()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setActivities(prev => [data, ...prev]);
+      setNewNote('');
+    } catch (error) {
+      console.error('Erro ao salvar nota:', error);
+      alert('Falha ao salvar nota.');
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
 
   const fetchLeads = async () => {
     setIsLoading(true);
@@ -213,7 +291,9 @@ export function Leads() {
       mergeField('phone', apiPhone);
       mergeField('phone_2', apiPhone2);
       mergeField('email', data.email);
-      mergeField('cnae', `${data.cnae_fiscal} - ${data.cnae_fiscal_descricao}`);
+      mergeField('cnae', data.cnae_fiscal);
+      mergeField('cnae_description', data.cnae_fiscal_descricao);
+      mergeField('sector', getMarketFromCNAE(data.cnae_fiscal));
       mergeField('secondary_cnaes', data.cnaes_secundarios?.map((c: any) => `${c.codigo} - ${c.descricao}`).join(' | '));
       mergeField('registration_status', data.descricao_situacao_cadastral);
       mergeField('company_size', data.porte === 1 ? 'MEI' : data.porte === 3 ? 'MICRO EMPRESA' : data.porte === 5 ? 'DEMAIS (MÉDIO/GRANDE)' : 'N/A');
@@ -240,7 +320,7 @@ export function Leads() {
 
       if (error) throw error;
 
-      const finalLead = { ...lead, ...updatedData };
+      const finalLead = { ...lead, ...finalUpdate };
       setSelectedLead(finalLead);
       setLeads(prev => prev.map(l => l.id === lead.id ? finalLead : l));
       alert('Dados atualizados com sucesso via Receita Federal!');
@@ -662,12 +742,20 @@ export function Leads() {
                       <p className="text-sm font-medium text-white">{selectedLead.name || selectedLead.nome_cliente}</p>
                     </div>
                     <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Setor de Atuação</p>
+                      <p className="text-sm font-bold text-primary">{selectedLead.sector || getMarketFromCNAE(selectedLead.cnae)}</p>
+                    </div>
+                    <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Nome Fantasia</p>
                       <p className="text-sm font-medium text-zinc-400">{selectedLead.nome_fantasia || 'Igual à Razão Social'}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">CNAE Principal</p>
                       <p className="text-sm font-medium text-white">{selectedLead.cnae || 'N/A'}</p>
+                    </div>
+                    <div className="col-span-full space-y-1">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descrição do CNAE</p>
+                      <p className="text-sm font-medium text-zinc-300 leading-relaxed">{selectedLead.cnae_description || 'N/A'}</p>
                     </div>
                     <div className="col-span-full space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">CNAEs Secundários</p>
@@ -804,6 +892,82 @@ export function Leads() {
                   <button className="glass px-8 py-4 rounded-2xl font-bold hover:bg-white/5 transition-all">
                     Agendar Reunião
                   </button>
+                </div>
+              </div>
+
+              {/* Relationship Timeline */}
+              <div className="lg:col-span-1 space-y-8">
+                <div className="glass p-8 rounded-3xl flex flex-col h-full min-h-[600px]">
+                  <h3 className="text-lg font-bold mb-6 flex items-center gap-3">
+                    <History className="text-primary" />
+                    Histórico de Relacionamento
+                  </h3>
+
+                  {/* Add Note Form */}
+                  <div className="mb-8 space-y-3">
+                    <div className="relative">
+                      <textarea
+                        value={newNote}
+                        onChange={(e) => setNewNote(e.target.value)}
+                        placeholder="Adicione uma nota sobre este lead..."
+                        className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-sm focus:ring-1 focus:ring-primary outline-none transition-all resize-none min-h-[100px]"
+                      />
+                      <button
+                        onClick={handleAddNote}
+                        disabled={isSavingNote || !newNote.trim()}
+                        className="absolute right-3 bottom-3 bg-primary text-white p-2 rounded-xl hover:brightness-110 transition-all disabled:opacity-30"
+                      >
+                        {isSavingNote ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Timeline List */}
+                  <div className="flex-1 overflow-y-auto space-y-6 pr-2 custom-scrollbar">
+                    {isLoadingActivities ? (
+                      <div className="flex flex-col items-center justify-center py-10 text-zinc-500 italic text-sm">
+                        <Loader2 className="animate-spin mb-2" size={20} />
+                        Carregando histórico...
+                      </div>
+                    ) : activities.length > 0 ? (
+                      <div className="relative space-y-6 before:absolute before:left-4 before:top-2 before:bottom-2 before:w-[2px] before:bg-white/5">
+                        {activities.map((activity) => (
+                          <div key={activity.id} className="relative pl-12">
+                            <div className={`absolute left-0 top-1 w-8 h-8 rounded-lg flex items-center justify-center z-10 ${
+                              activity.activity_type === 'email' ? 'bg-blue-500/20 text-blue-500' :
+                              activity.activity_type === 'note' ? 'bg-amber-500/20 text-amber-500' :
+                              'bg-zinc-800 text-zinc-400'
+                            }`}>
+                              {activity.activity_type === 'email' ? <Mail size={14} /> :
+                               activity.activity_type === 'note' ? <MessageSquare size={14} /> :
+                               <Clock size={14} />}
+                            </div>
+                            <div className="glass-card p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                              <div className="flex justify-between items-start mb-2">
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                                  {activity.activity_type === 'email' ? 'E-mail Enviado' :
+                                   activity.activity_type === 'note' ? 'Anotação' : 'Atividade'}
+                                </span>
+                                <span className="text-[10px] text-zinc-600 font-mono">
+                                  {new Date(activity.created_at).toLocaleString('pt-BR', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
+                              <p className="text-sm text-zinc-300 leading-relaxed">{activity.content}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-10 text-zinc-600 italic text-sm">
+                        Nenhuma interação registrada ainda.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

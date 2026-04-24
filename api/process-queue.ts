@@ -39,7 +39,7 @@ export default async function handler(req: any, res: any) {
     // 2. Buscar os próximos emails pendentes baseando-se no limite/batch
     const { data: pendingEmails, error: queueError } = await supabase
       .from('email_queue')
-      .select('id, recipient_email, subject, body_html')
+      .select('id, recipient_email, subject, body_html, lead_id')
       .eq('status', 'pending')
       .order('scheduled_for', { ascending: true })
       .limit(config.batch_size || 30);
@@ -79,6 +79,23 @@ export default async function handler(req: any, res: any) {
           .from('email_queue')
           .update({ status: 'sent', sent_at: new Date().toISOString() })
           .eq('id', email.id);
+
+        if (email.lead_id) {
+          // Move o lead no funil
+          await supabase
+            .from('leads')
+            .update({ pipeline_stage: 'E-mail Enviado' })
+            .eq('id', email.lead_id);
+            
+          // Registra o histórico
+          await supabase
+            .from('lead_activities')
+            .insert({
+              lead_id: email.lead_id,
+              activity_type: 'email',
+              content: `E-mail enviado: ${email.subject}`
+            });
+        }
 
         successCount++;
       } catch (err: any) {
