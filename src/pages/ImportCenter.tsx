@@ -94,6 +94,7 @@ export function ImportCenter() {
             capital_social: parseFloat(String(row['Capital Social da Empresa'] || row['Capital Soc'] || row['Capital Social'] || '0').replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
             estimated_revenue: row['Faturamento Estimado'] || row['Faturam. Est'] || row['Faturamento'] || '',
             employee_count: row['Quadro de Funcionários'] || row['Quadro de Fun'] || row['Funcionários'] || '',
+            active_debts: row['Dívidas Federais Ativas'] || row['Dívidas'] || row['Dividas'] || '',
             registration_status: row['Situação Cad.'] || row['Situação'] || row['Situacao'] || 'ATIVA',
             activity_start_date: row['Data Início Atv.'] || row['Data Inicio A'] || row['Data Inicio'] || row['Abertura'] || '',
             legal_nature: row['Natureza Jurídica'] || row['Natureza'] || '',

@@ -9,6 +9,7 @@ import { ImportCenter } from './pages/ImportCenter';
 import { Dashboard } from './pages/Dashboard';
 import { Leads } from './pages/Leads';
 import { Campanhas } from './pages/Campanhas';
+import { Inbox } from './pages/Inbox';
 import { Monitorar } from './pages/Monitorar';
 import { useState } from 'react';
 
@@ -31,6 +32,7 @@ export default function App() {
             <Route path="/leads" element={<Leads />} />
             <Route path="/import" element={<ImportCenter />} />
             <Route path="/campaigns" element={<Campanhas />} />
+            <Route path="/inbox" element={<Inbox />} />
             <Route path="/monitor" element={<Monitorar />} />
           </Routes>
         </div>

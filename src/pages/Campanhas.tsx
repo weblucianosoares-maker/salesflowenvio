@@ -28,6 +28,17 @@ export function Campanhas() {
     interval_minutes: 20
   });
 
+  const [filters, setFilters] = useState({
+    city: '',
+    neighborhood: '',
+    cnae: '',
+    company_size: '',
+    employee_count: '',
+    capital_social_range: '',
+    has_debts: '',
+    estimated_revenue: ''
+  });
+
   const templates = [
     {
       id: 1,
@@ -50,22 +61,47 @@ export function Campanhas() {
   ];
 
   useEffect(() => {
-    fetchLeadCount();
     fetchConfig();
   }, []);
 
+  useEffect(() => {
+    fetchLeadCount();
+  }, [filters]);
+
+  const buildQuery = (queryObj: any) => {
+    let q = queryObj;
+    if (filters.city) q = q.ilike('address_city', `%${filters.city}%`);
+    if (filters.neighborhood) q = q.ilike('address_neighborhood', `%${filters.neighborhood}%`);
+    if (filters.cnae) q = q.ilike('cnae', `%${filters.cnae}%`);
+    if (filters.company_size) q = q.eq('company_size', filters.company_size);
+    if (filters.employee_count) q = q.ilike('employee_count', `%${filters.employee_count}%`);
+    if (filters.estimated_revenue) q = q.ilike('estimated_revenue', `%${filters.estimated_revenue}%`);
+    if (filters.has_debts === 'yes') {
+      q = q.neq('active_debts', '').not('active_debts', 'is', null);
+    } else if (filters.has_debts === 'no') {
+      q = q.or('active_debts.eq.,active_debts.is.null');
+    }
+    
+    if (filters.capital_social_range) {
+      if (filters.capital_social_range === '0-50k') q = q.lte('capital_social', 50000);
+      else if (filters.capital_social_range === '50k-100k') q = q.gte('capital_social', 50000).lte('capital_social', 100000);
+      else if (filters.capital_social_range === '100k-500k') q = q.gte('capital_social', 100000).lte('capital_social', 500000);
+      else if (filters.capital_social_range === '500k+') q = q.gte('capital_social', 500000);
+    }
+    return q;
+  };
+
   const fetchLeadCount = async () => {
-    const { count } = await supabase
-      .from('leads')
-      .select('*', { count: 'exact', head: true });
+    const { count } = await buildQuery(supabase.from('leads').select('*', { count: 'exact', head: true }));
     setLeadCount(count || 0);
 
-    const { data } = await supabase
-      .from('leads')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(5);
-    if (data) setPreviewLeads(data);
+    const { data } = await buildQuery(supabase.from('leads').select('*').order('created_at', { ascending: false }).limit(5));
+    if (data) {
+      setPreviewLeads(data);
+      setCurrentPreviewIndex(0);
+    } else {
+      setPreviewLeads([]);
+    }
   };
 
   const fetchConfig = async () => {
@@ -127,9 +163,7 @@ export function Campanhas() {
         if (cError) throw cError;
 
         // 2. Buscar todos os leads para popular a fila
-        const { data: leads, error: lError } = await supabase
-          .from('leads')
-          .select('*');
+        const { data: leads, error: lError } = await buildQuery(supabase.from('leads').select('*'));
 
         if (lError) throw lError;
 
@@ -413,6 +447,111 @@ export function Campanhas() {
 
         {/* Preview & Reach */}
         <div className="col-span-4 space-y-6">
+          {/* Audience Segmentation */}
+          <div className="glass p-6 rounded-3xl border-primary/20 bg-primary/5">
+            <h4 className="text-primary font-bold mb-4 flex items-center gap-2">
+              <Users size={18}/> 
+              Segmentação de Público
+            </h4>
+            
+            <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+              <div>
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1 px-1">Cidade</label>
+                <input 
+                  type="text" 
+                  value={filters.city}
+                  onChange={(e) => setFilters({...filters, city: e.target.value})}
+                  className="w-full bg-white/5 border border-white/5 rounded-xl p-2.5 text-sm text-white focus:ring-1 focus:ring-primary outline-none" 
+                  placeholder="Ex: São Paulo" 
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1 px-1">Bairro</label>
+                <input 
+                  type="text" 
+                  value={filters.neighborhood}
+                  onChange={(e) => setFilters({...filters, neighborhood: e.target.value})}
+                  className="w-full bg-white/5 border border-white/5 rounded-xl p-2.5 text-sm text-white focus:ring-1 focus:ring-primary outline-none" 
+                  placeholder="Ex: Centro" 
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1 px-1">Setor (CNAE)</label>
+                <input 
+                  type="text" 
+                  value={filters.cnae}
+                  onChange={(e) => setFilters({...filters, cnae: e.target.value})}
+                  className="w-full bg-white/5 border border-white/5 rounded-xl p-2.5 text-sm text-white focus:ring-1 focus:ring-primary outline-none" 
+                  placeholder="Ex: Tecnologia, Clínicas..." 
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1 px-1">Porte</label>
+                  <select 
+                    value={filters.company_size}
+                    onChange={(e) => setFilters({...filters, company_size: e.target.value})}
+                    className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl p-2.5 text-sm text-white focus:ring-1 focus:ring-primary outline-none appearance-none"
+                  >
+                    <option value="">Todos</option>
+                    <option value="MEI">MEI</option>
+                    <option value="MICRO EMPRESA">Micro Empresa</option>
+                    <option value="EPP">EPP</option>
+                    <option value="DEMAIS (MÉDIO/GRANDE)">Médio/Grande</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1 px-1">Dívidas</label>
+                  <select 
+                    value={filters.has_debts}
+                    onChange={(e) => setFilters({...filters, has_debts: e.target.value})}
+                    className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl p-2.5 text-sm text-white focus:ring-1 focus:ring-primary outline-none appearance-none"
+                  >
+                    <option value="">Indiferente</option>
+                    <option value="yes">Com Dívidas Ativas</option>
+                    <option value="no">Sem Dívidas</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1 px-1">Capital Social</label>
+                <select 
+                  value={filters.capital_social_range}
+                  onChange={(e) => setFilters({...filters, capital_social_range: e.target.value})}
+                  className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl p-2.5 text-sm text-white focus:ring-1 focus:ring-primary outline-none appearance-none"
+                >
+                  <option value="">Qualquer Valor</option>
+                  <option value="0-50k">Até R$ 50.000</option>
+                  <option value="50k-100k">De R$ 50.000 a R$ 100.000</option>
+                  <option value="100k-500k">De R$ 100.000 a R$ 500.000</option>
+                  <option value="500k+">Acima de R$ 500.000</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1 px-1">Faturamento</label>
+                  <input 
+                    type="text" 
+                    value={filters.estimated_revenue}
+                    onChange={(e) => setFilters({...filters, estimated_revenue: e.target.value})}
+                    className="w-full bg-white/5 border border-white/5 rounded-xl p-2.5 text-sm text-white focus:ring-1 focus:ring-primary outline-none" 
+                    placeholder="Ex: 50k" 
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1 px-1">Funcionários</label>
+                  <input 
+                    type="text" 
+                    value={filters.employee_count}
+                    onChange={(e) => setFilters({...filters, employee_count: e.target.value})}
+                    className="w-full bg-white/5 border border-white/5 rounded-xl p-2.5 text-sm text-white focus:ring-1 focus:ring-primary outline-none" 
+                    placeholder="Ex: 10-50" 
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="glass p-6 rounded-3xl h-[450px] flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-bold text-zinc-300 flex items-center gap-2">
