@@ -67,7 +67,7 @@ export function ImportCenter() {
         const chunk = jsonData.slice(i, i + CHUNK_SIZE_PROCESSING);
         const mappedChunk = chunk.map(row => {
           // Normalização de porte para bater com nossos filtros
-          let porteRaw = row['Porte E'] || row['Porte'] || row['Porte Empresa'] || row['Porte da Empresa'] || 'N/A';
+          let porteRaw = row['Porte Empresa'] || row['Porte E'] || row['Porte'] || row['Porte da Empresa'] || 'N/A';
           let porte = String(porteRaw).toUpperCase();
           if (porte.includes('MICRO EM')) porte = 'MICRO EMPRESA';
           else if (porte.includes('MEI')) porte = 'MEI';
@@ -91,12 +91,12 @@ export function ImportCenter() {
             website: row['Site'] || row['Website'] || row['url'] || '',
             cnae: row['CNAE Principal'] || row['CNAE'] || row['CNAE P'] || '',
             company_size: porte,
-            capital_social: parseFloat(String(row['Capital Soc'] || row['Capital Social'] || '0').replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
-            estimated_revenue: row['Faturam. Est'] || row['Faturamento'] || row['Faturamento Estimado'] || '',
-            employee_count: row['Quadro de Fun'] || row['Funcionários'] || row['Quadro de Funcionários'] || '',
+            capital_social: parseFloat(String(row['Capital Social da Empresa'] || row['Capital Soc'] || row['Capital Social'] || '0').replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
+            estimated_revenue: row['Faturamento Estimado'] || row['Faturam. Est'] || row['Faturamento'] || '',
+            employee_count: row['Quadro de Funcionários'] || row['Quadro de Fun'] || row['Funcionários'] || '',
             registration_status: row['Situação Cad.'] || row['Situação'] || row['Situacao'] || 'ATIVA',
-            activity_start_date: row['Data Inicio A'] || row['Data Inicio'] || row['Abertura'] || '',
-            legal_nature: row['Natureza Juridica'] || row['Natureza'] || '',
+            activity_start_date: row['Data Início Atv.'] || row['Data Inicio A'] || row['Data Inicio'] || row['Abertura'] || '',
+            legal_nature: row['Natureza Jurídica'] || row['Natureza'] || '',
             status: 'Novo',
             source: 'Importação Manual'
           };
