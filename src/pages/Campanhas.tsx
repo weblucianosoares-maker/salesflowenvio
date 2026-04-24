@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bold, Italic, Link, Paperclip, Edit3, Tag, Zap, Eye, Users, Send, Clock, AlertTriangle, Settings, CheckCircle2, Loader2, Play, Pause, Trash2 } from 'lucide-react';
+import { Bold, Italic, Link, Paperclip, Edit3, Tag, Zap, Eye, Users, Send, Clock, AlertTriangle, Settings, CheckCircle2, Loader2, Play, Pause, Trash2, FileText, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface EmailConfig {
@@ -14,6 +14,7 @@ interface EmailConfig {
 export function Campanhas() {
   const [leadCount, setLeadCount] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -25,6 +26,27 @@ export function Campanhas() {
     batch_size: 30,
     interval_minutes: 20
   });
+
+  const templates = [
+    {
+      id: 1,
+      name: "Opção 1: Autoridade e Localização",
+      subject: "Gestão de benefícios para a {{Razão}} em {{Cidade}}",
+      body: "Olá, {{Nome_do_Sócio}}.\n\nAcompanhando o mercado de {{Texto_CNAE_Principal}} aqui no Rio de Janeiro, notei que a {{Fantasia}} tem se destacado no setor de {{Porte_Empresa}}. Sou Luciano Soares, consultor especializado em saúde empresarial, e trabalho ajudando empresas com o perfil da sua a reduzirem em até 30% o custo fixo com planos de saúde, sem perder a qualidade da rede referenciada.\n\nComo vocês estão situados em {{Bairro}}, existem opções regionais e nacionais que se encaixam muito bem no quadro de {{Quadro_de_Funcionários}} colaboradores que vocês possuem.\n\nTeria 5 minutos para uma breve conversa por telefone no número {{Telefone_1}} ainda esta semana?"
+    },
+    {
+      id: 2,
+      name: "Opção 2: Redução de Custos (RevOps)",
+      subject: "Eficiência operacional e saúde: Estratégia para a {{Fantasia}}",
+      body: "Bom dia, {{Nome_do_Sócio}}.\n\nVi que a {{Razão}} opera sob o regime {{Regime_Tributário}}. Muitas empresas desse porte acabam pagando taxas abusivas em benefícios por falta de uma gestão estratégica de sinistralidade.\n\nMeu trabalho é implementar uma 'unidade de receita' indireta, otimizando seus contratos de saúde para que o valor economizado possa ser reinvestido na operação da sua empresa em {{Cidade}}. Analisei que vocês possuem um faturamento estimado de {{Faturamento_Estimado}}, o que os coloca em uma categoria de negociação exclusiva junto às operadoras.\n\nPodemos validar se o seu contrato atual está atualizado com as novas tabelas de 2026?"
+    },
+    {
+      id: 3,
+      name: "Opção 3: Direta e Curta (Mobile)",
+      subject: "Pergunta rápida para o sócio da {{Fantasia}}",
+      body: "Oi, {{Nome_do_Sócio}}, tudo bem?\n\nSou o Luciano, consultor de benefícios. Estou entrando em contato porque vi que a {{Fantasia}} atua em {{Cidade}} e gostaria de saber: quem é a pessoa responsável hoje por revisar os custos de plano de saúde e benefícios dos seus {{Quadro_de_Funcionários}} funcionários?\n\nTenho uma análise de mercado específica para o setor de {{Texto_CNAE_Principal}} que pode interessar vocês.\n\nUm abraço,"
+    }
+  ];
 
   useEffect(() => {
     fetchLeadCount();
@@ -105,17 +127,38 @@ export function Campanhas() {
 
         // 3. Preparar a fila (em lotes para não travar o navegador)
         const queueItems = leads.map(lead => {
+          // Lógica de Fallback (Dica do Vibe Code)
+          let fallbackNome = lead.partner_name || lead.nome_cliente || 'Responsável';
+          if (fallbackNome.length <= 3 || !isNaN(Number(fallbackNome))) {
+            fallbackNome = 'Responsável pela ' + (lead.nome_fantasia || lead.name || 'empresa');
+          }
+
           let personalizedBody = message
-            .replace(/{{Name}}/g, lead.name || '')
-            .replace(/{{Partner}}/g, lead.partner_name || lead.name || '')
-            .replace(/{{City}}/g, lead.address_city || '')
-            .replace(/{{Sector}}/g, lead.cnae || '');
+            .replace(/{{Name}}/gi, lead.name || '')
+            .replace(/{{Partner}}/gi, fallbackNome)
+            .replace(/{{City}}/gi, lead.address_city || '')
+            .replace(/{{Sector}}/gi, lead.cnae || '')
+            .replace(/{{Razão}}/gi, lead.name || '')
+            .replace(/{{Fantasia}}/gi, lead.nome_fantasia || lead.name || '')
+            .replace(/{{Nome_do_Sócio}}/gi, fallbackNome)
+            .replace(/{{Cidade}}/gi, lead.address_city || '')
+            .replace(/{{Texto_CNAE_Principal}}/gi, lead.cnae || '')
+            .replace(/{{Porte_Empresa}}/gi, lead.company_size || 'empresa')
+            .replace(/{{Bairro}}/gi, lead.address_neighborhood || 'sua região')
+            .replace(/{{Quadro_de_Funcionários}}/gi, lead.employee_count || 'seus')
+            .replace(/{{Telefone_1}}/gi, lead.phone || '')
+            .replace(/{{Regime_Tributário}}/gi, lead.regime_tributario || 'seu regime atual')
+            .replace(/{{Faturamento_Estimado}}/gi, lead.estimated_revenue || 'seu porte');
 
           let personalizedSubject = subject
-            .replace(/{{Name}}/g, lead.name || '')
-            .replace(/{{Partner}}/g, lead.partner_name || lead.name || '')
-            .replace(/{{City}}/g, lead.address_city || '')
-            .replace(/{{Sector}}/g, lead.cnae || '');
+            .replace(/{{Name}}/gi, lead.name || '')
+            .replace(/{{Partner}}/gi, fallbackNome)
+            .replace(/{{City}}/gi, lead.address_city || '')
+            .replace(/{{Sector}}/gi, lead.cnae || '')
+            .replace(/{{Razão}}/gi, lead.name || '')
+            .replace(/{{Fantasia}}/gi, lead.nome_fantasia || lead.name || '')
+            .replace(/{{Nome_do_Sócio}}/gi, fallbackNome)
+            .replace(/{{Cidade}}/gi, lead.address_city || '');
 
           return {
             campaign_id: campaign.id,
@@ -262,19 +305,49 @@ export function Campanhas() {
         {/* Editor & Config */}
         <div className="col-span-8 space-y-6">
           <div className="glass rounded-3xl p-8">
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
+            <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5 relative">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-primary/10 rounded-lg">
                   <Edit3 className="text-primary" size={20} />
                 </div>
                 <h3 className="font-bold text-lg">Composição do E-mail</h3>
               </div>
-              <div className="flex gap-1">
-                {[Bold, Italic, Link, Paperclip].map((Icon, i) => (
-                  <button key={i} className="p-2.5 hover:bg-white/5 rounded-lg text-zinc-500 hover:text-white transition-colors">
-                    <Icon size={18} />
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowTemplates(!showTemplates)}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 rounded-xl text-sm font-bold text-primary transition-colors border border-primary/20"
+                  >
+                    <FileText size={16} />
+                    Modelos Prontos
+                    <ChevronDown size={16} />
                   </button>
-                ))}
+                  {showTemplates && (
+                    <div className="absolute right-0 top-full mt-2 w-80 bg-[#1a1b1e] border border-white/10 rounded-xl shadow-2xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                      {templates.map(t => (
+                        <button
+                          key={t.id}
+                          onClick={() => {
+                            setSubject(t.subject);
+                            setMessage(t.body);
+                            setShowTemplates(false);
+                          }}
+                          className="w-full text-left px-5 py-4 hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors"
+                        >
+                          <p className="text-sm font-bold text-white mb-1">{t.name}</p>
+                          <p className="text-xs text-zinc-400 truncate">{t.subject}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-1 border-l border-white/10 pl-4">
+                  {[Bold, Italic, Link, Paperclip].map((Icon, i) => (
+                    <button key={i} className="p-2.5 hover:bg-white/5 rounded-lg text-zinc-500 hover:text-white transition-colors">
+                      <Icon size={18} />
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             
@@ -308,7 +381,7 @@ export function Campanhas() {
                 Variáveis Dinâmicas
               </h4>
               <div className="flex flex-wrap gap-2">
-                {['Name', 'Partner', 'City', 'Sector'].map((tag) => (
+                {['Razão', 'Fantasia', 'Nome_do_Sócio', 'Cidade', 'Texto_CNAE_Principal', 'Porte_Empresa', 'Bairro', 'Quadro_de_Funcionários', 'Telefone_1'].map((tag) => (
                   <span 
                     key={tag} 
                     onClick={() => setMessage(prev => prev + ` {{${tag}}}`)}
