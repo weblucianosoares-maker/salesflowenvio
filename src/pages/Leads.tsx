@@ -185,40 +185,57 @@ export function Leads() {
       
       const data = await response.json();
       
-      const updatedData = {
-        name: data.razao_social || data.nome_fantasia,
-        nome_cliente: data.razao_social || data.nome_fantasia,
-        nome_fantasia: data.nome_fantasia,
-        address_street: data.logradouro,
-        address_number: data.numero,
-        address_neighborhood: data.bairro,
-        address_city: data.municipio,
-        address_state: data.uf,
-        address_zip: data.cep,
-        phone: data.ddd_telefone_1 ? `(${data.ddd_telefone_1.substring(0,2)}) ${data.ddd_telefone_1.substring(2)}` : '',
-        phone_2: data.ddd_telefone_2 ? `(${data.ddd_telefone_2.substring(0,2)}) ${data.ddd_telefone_2.substring(2)}` : '',
-        email: data.email,
-        cnae: `${data.cnae_fiscal} - ${data.cnae_fiscal_descricao}`,
-        secondary_cnaes: data.cnaes_secundarios?.map((c: any) => `${c.codigo} - ${c.descricao}`).join(' | '),
-        registration_status: data.descricao_situacao_cadastral,
-        company_size: data.porte === 1 ? 'MEI' : data.porte === 3 ? 'MICRO EMPRESA' : data.porte === 5 ? 'DEMAIS (MÉDIO/GRANDE)' : 'N/A',
-        last_registration_update: data.data_situacao_cadastral,
-        activity_start_date: data.data_inicio_atividade,
-        legal_nature: data.natureza_juridica,
-        capital_social: data.capital_social,
-        tax_regime: data.opcao_pelo_simples ? (data.opcao_pelo_mei ? 'MEI' : 'Simples Nacional') : 'Lucro Presumido/Real',
-        // Dados do 1º Sócio (QSA)
-        partner_id: data.qsa?.[0]?.identificador_de_socio,
-        partner_name: data.qsa?.[0]?.nome_socio,
-        partner_age_range: data.qsa?.[0]?.faixa_etaria,
-        partner_cpf_cnpj: data.qsa?.[0]?.cnpj_cpf_do_socio,
-        partner_qualification: data.qsa?.[0]?.qualificacao_socio,
-        partner_entry_date: data.qsa?.[0]?.data_entrada_sociedade
+      // Proteção: Só atualiza se o dado da API não for nulo/vazio, ou se o dado local for vazio
+      const finalUpdate: any = {};
+      
+      const mergeField = (field: string, newValue: any) => {
+        const oldValue = selectedLead[field];
+        if (newValue && newValue !== 'N/A' && newValue !== 0) {
+          finalUpdate[field] = newValue;
+        } else if (!oldValue) {
+          finalUpdate[field] = newValue;
+        }
       };
+
+      mergeField('name', data.razao_social || data.nome_fantasia);
+      mergeField('nome_cliente', data.razao_social || data.nome_fantasia);
+      mergeField('nome_fantasia', data.nome_fantasia);
+      mergeField('address_street', data.logradouro);
+      mergeField('address_number', data.numero);
+      mergeField('address_neighborhood', data.bairro);
+      mergeField('address_city', data.municipio);
+      mergeField('address_state', data.uf);
+      mergeField('address_zip', data.cep);
+      
+      const apiPhone = data.ddd_telefone_1 ? `(${data.ddd_telefone_1.substring(0,2)}) ${data.ddd_telefone_1.substring(2)}` : '';
+      const apiPhone2 = data.ddd_telefone_2 ? `(${data.ddd_telefone_2.substring(0,2)}) ${data.ddd_telefone_2.substring(2)}` : '';
+      
+      mergeField('phone', apiPhone);
+      mergeField('phone_2', apiPhone2);
+      mergeField('email', data.email);
+      mergeField('cnae', `${data.cnae_fiscal} - ${data.cnae_fiscal_descricao}`);
+      mergeField('secondary_cnaes', data.cnaes_secundarios?.map((c: any) => `${c.codigo} - ${c.descricao}`).join(' | '));
+      mergeField('registration_status', data.descricao_situacao_cadastral);
+      mergeField('company_size', data.porte === 1 ? 'MEI' : data.porte === 3 ? 'MICRO EMPRESA' : data.porte === 5 ? 'DEMAIS (MÉDIO/GRANDE)' : 'N/A');
+      mergeField('last_registration_update', data.data_situacao_cadastral);
+      mergeField('activity_start_date', data.data_inicio_atividade);
+      mergeField('legal_nature', data.natureza_juridica);
+      mergeField('capital_social', data.capital_social);
+      mergeField('tax_regime', data.opcao_pelo_simples ? (data.opcao_pelo_mei ? 'MEI' : 'Simples Nacional') : 'Lucro Presumido/Real');
+      
+      // Dados do 1º Sócio (QSA)
+      mergeField('partner_id', data.qsa?.[0]?.identificador_de_socio);
+      mergeField('partner_name', data.qsa?.[0]?.nome_socio);
+      mergeField('partner_age_range', data.qsa?.[0]?.faixa_etaria);
+      mergeField('partner_cpf_cnpj', data.qsa?.[0]?.cnpj_cpf_do_socio);
+      mergeField('partner_qualification', data.qsa?.[0]?.qualificacao_socio);
+      mergeField('partner_entry_date', data.qsa?.[0]?.data_entrada_sociedade);
+
+      if (Object.keys(finalUpdate).length === 0) return;
 
       const { error } = await supabase
         .from('leads')
-        .update(updatedData)
+        .update(finalUpdate)
         .eq('id', lead.id);
 
       if (error) throw error;
