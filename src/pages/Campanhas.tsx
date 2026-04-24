@@ -46,14 +46,20 @@ export function Campanhas() {
   const handleSaveConfig = async () => {
     setIsSaving(true);
     try {
+      // Remover campos nulos ou ids vazios para evitar erro de upsert
+      const { id, ...configData } = config as any;
+      const dataToSave = id ? { ...configData, id } : configData;
+
       const { error } = await supabase
         .from('email_configs')
-        .upsert({ ...config, id: (config as any).id || undefined });
+        .upsert(dataToSave);
+      
       if (error) throw error;
       setShowSettings(false);
-    } catch (err) {
+      alert('Configurações salvas com sucesso!');
+    } catch (err: any) {
       console.error(err);
-      alert('Erro ao salvar configurações. Verifique o console.');
+      alert(`Erro ao salvar: ${err.message || 'Verifique se a tabela email_configs foi criada no Supabase.'}`);
     } finally {
       setIsSaving(false);
     }
