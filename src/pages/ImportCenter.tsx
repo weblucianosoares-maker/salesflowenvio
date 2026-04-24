@@ -102,7 +102,12 @@ export function ImportCenter() {
             website: row['Site'] || row['Website'] || row['url'] || '',
             cnae: row['CNAE Principal'] || row['CNAE'] || row['CNAE P'] || '',
             company_size: porte,
-            capital_social: parseFloat(String(row['Capital Social da Empresa'] || row['Capital Soc'] || row['Capital Social'] || '0').replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
+            capital_social: parseFloat(
+              String(row['Capital Social da Empresa'] || row['Capital Soc'] || row['Capital Social'] || '0')
+                .replace(/\./g, '') // Remove todos os pontos de milhar
+                .replace(',', '.')  // Troca a vírgula decimal por ponto
+                .replace(/[^\d.]/g, '') // Remove qualquer outro caractere não numérico (exceto o novo ponto)
+            ) || 0,
             estimated_revenue: row['Faturamento Estimado'] || row['Faturam. Est'] || row['Faturamento'] || '',
             employee_count: row['Quadro de Funcionários'] || row['Quadro de Fun'] || row['Funcionários'] || '',
             active_debts: row['Dívidas Federais Ativas'] || row['Dívidas'] || row['Dividas'] || '',
