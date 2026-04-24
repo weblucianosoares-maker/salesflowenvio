@@ -39,6 +39,8 @@ export function Campanhas() {
     estimated_revenue: ''
   });
 
+  const [queueStats, setQueueStats] = useState({ pending: 0, sent: 0, error: 0 });
+
   const templates = [
     {
       id: 1,
@@ -62,7 +64,18 @@ export function Campanhas() {
 
   useEffect(() => {
     fetchConfig();
+    fetchQueueStats();
   }, []);
+
+  const fetchQueueStats = async () => {
+    const { data } = await supabase.from('email_queue').select('status');
+    if (data) {
+      const pending = data.filter(e => e.status === 'pending').length;
+      const sent = data.filter(e => e.status === 'sent').length;
+      const error = data.filter(e => e.status === 'error').length;
+      setQueueStats({ pending, sent, error });
+    }
+  };
 
   useEffect(() => {
     fetchLeadCount();
@@ -662,35 +675,30 @@ export function Campanhas() {
             </div>
           </div>
         {/* Pipeline Queue / Status */}
-        <div className="glass rounded-3xl overflow-hidden">
+        <div className="glass rounded-3xl overflow-hidden relative">
           <div className="p-6 bg-white/[0.02] border-b border-white/5 flex justify-between items-center">
             <h3 className="font-semibold text-sm">Monitor de Envio Fracionado</h3>
-            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2">
-              <Loader2 size={12} className="animate-spin" /> Processando Fila
-            </span>
+            <a href="/inbox" className="text-[10px] font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2 hover:text-white transition-colors cursor-pointer bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/20">
+               ABRIR CAIXA DE E-MAILS
+            </a>
           </div>
           <div className="p-8 grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Aguardando</p>
-              <p className="text-2xl font-black text-white">---</p>
+              <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Aguardando na Fila</p>
+              <p className="text-2xl font-black text-white">{queueStats.pending}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Enviados</p>
-              <p className="text-2xl font-black text-emerald-500">0</p>
+              <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Enviados (Sucesso)</p>
+              <p className="text-2xl font-black text-emerald-500">{queueStats.sent}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Próximo Lote</p>
-              <p className="text-sm font-medium text-white flex items-center gap-2">
-                <Clock size={14} className="text-amber-500"/> em 18 minutos
-              </p>
+              <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Falhas / Erros</p>
+              <p className="text-2xl font-black text-red-500">{queueStats.error}</p>
             </div>
             <div className="flex items-center gap-3">
-              <button className="p-3 bg-white/5 hover:bg-white/10 rounded-xl text-zinc-400 transition-all">
-                <Pause size={18} />
-              </button>
-              <button className="p-3 bg-red-500/10 hover:bg-red-500/20 rounded-xl text-red-500 transition-all">
-                <Trash2 size={18} />
-              </button>
+              <a href="/inbox" className="w-full text-center p-3 bg-white/5 hover:bg-white/10 rounded-xl text-zinc-400 hover:text-white transition-all text-xs font-bold flex items-center justify-center gap-2">
+                <Settings size={16}/> Gerenciar Envio
+              </a>
             </div>
           </div>
         </div>
