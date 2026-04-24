@@ -923,9 +923,82 @@ export function Leads() {
                     </h3>
                     <p className="text-sm text-zinc-300 leading-relaxed italic">
                       "{selectedLead.ai_summary}"
-                    </p>
+                         {/* Histórico e Anotações movido para cá */}
+                <div className="glass p-8 rounded-3xl flex flex-col h-full min-h-[500px]">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-500 flex items-center gap-2 mb-6">
+                    <History size={16} className="text-primary" />
+                    Histórico de Relacionamento
+                  </h3>
+
+                  {/* Add Note Form */}
+                  <div className="mb-8 space-y-3">
+                    <div className="relative">
+                      <textarea
+                        value={newNote}
+                        onChange={(e) => setNewNote(e.target.value)}
+                        placeholder="Adicione uma nota sobre este lead..."
+                        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl p-4 text-sm focus:outline-none focus:border-primary/50 transition-all resize-none min-h-[100px]"
+                      />
+                      <button
+                        onClick={handleAddNote}
+                        disabled={isSavingNote || !newNote.trim()}
+                        className="absolute right-3 bottom-3 bg-primary text-white p-2 rounded-xl hover:brightness-110 transition-all disabled:opacity-30 shadow-lg shadow-primary/20"
+                      >
+                        {isSavingNote ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                      </button>
+                    </div>
                   </div>
-                )}
+
+                  {/* Timeline List */}
+                  <div className="flex-1 overflow-y-auto space-y-6 pr-2 custom-scrollbar max-h-[400px]">
+                    {isLoadingActivities ? (
+                      <div className="flex flex-col items-center justify-center py-10 text-zinc-500 italic text-sm">
+                        <Loader2 className="animate-spin mb-2" size={20} />
+                        Carregando histórico...
+                      </div>
+                    ) : activities.length > 0 ? (
+                      <div className="relative space-y-6 before:absolute before:left-4 before:top-2 before:bottom-2 before:w-[2px] before:bg-white/5">
+                        {activities.map((activity) => (
+                          <div key={activity.id} className="relative pl-12">
+                            <div className={`absolute left-0 top-1 w-8 h-8 rounded-lg flex items-center justify-center z-10 ${
+                              activity.activity_type === 'email' ? 'bg-blue-500/20 text-blue-500' :
+                              activity.activity_type === 'note' ? 'bg-amber-500/20 text-amber-500' :
+                              'bg-zinc-800 text-zinc-400'
+                            }`}>
+                              {activity.activity_type === 'email' ? <Mail size={14} /> :
+                               activity.activity_type === 'note' ? <MessageSquare size={14} /> :
+                               <Clock size={14} />}
+                            </div>
+                            <div className="glass-card p-4 rounded-2xl bg-white/[0.01] border border-white/5">
+                              <div className="flex justify-between items-start mb-2">
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                                  {activity.activity_type === 'email' ? 'E-mail Enviado' :
+                                   activity.activity_type === 'note' ? 'Anotação' : 'Atividade'}
+                                </span>
+                                <span className="text-[10px] text-zinc-600 font-mono">
+                                  {new Date(activity.created_at).toLocaleString('pt-BR', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
+                              <p className="text-sm text-zinc-300 leading-relaxed">{activity.content}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-10 text-zinc-600 italic text-sm opacity-20">
+                        <History size={32} className="mx-auto mb-2" />
+                        <p>Nenhuma interação registrada.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>                  </div>
+                </div>
               </div>
 
               {/* Detailed Info */}
@@ -1137,81 +1210,6 @@ export function Leads() {
                 </div>
               </div>
 
-              {/* Relationship Timeline */}
-              <div className="lg:col-span-1 space-y-8">
-                <div className="glass p-8 rounded-3xl flex flex-col h-full min-h-[600px]">
-                  <h3 className="text-lg font-bold mb-6 flex items-center gap-3">
-                    <History className="text-primary" />
-                    Histórico de Relacionamento
-                  </h3>
-
-                  {/* Add Note Form */}
-                  <div className="mb-8 space-y-3">
-                    <div className="relative">
-                      <textarea
-                        value={newNote}
-                        onChange={(e) => setNewNote(e.target.value)}
-                        placeholder="Adicione uma nota sobre este lead..."
-                        className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-sm focus:ring-1 focus:ring-primary outline-none transition-all resize-none min-h-[100px]"
-                      />
-                      <button
-                        onClick={handleAddNote}
-                        disabled={isSavingNote || !newNote.trim()}
-                        className="absolute right-3 bottom-3 bg-primary text-white p-2 rounded-xl hover:brightness-110 transition-all disabled:opacity-30"
-                      >
-                        {isSavingNote ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Timeline List */}
-                  <div className="flex-1 overflow-y-auto space-y-6 pr-2 custom-scrollbar">
-                    {isLoadingActivities ? (
-                      <div className="flex flex-col items-center justify-center py-10 text-zinc-500 italic text-sm">
-                        <Loader2 className="animate-spin mb-2" size={20} />
-                        Carregando histórico...
-                      </div>
-                    ) : activities.length > 0 ? (
-                      <div className="relative space-y-6 before:absolute before:left-4 before:top-2 before:bottom-2 before:w-[2px] before:bg-white/5">
-                        {activities.map((activity) => (
-                          <div key={activity.id} className="relative pl-12">
-                            <div className={`absolute left-0 top-1 w-8 h-8 rounded-lg flex items-center justify-center z-10 ${
-                              activity.activity_type === 'email' ? 'bg-blue-500/20 text-blue-500' :
-                              activity.activity_type === 'note' ? 'bg-amber-500/20 text-amber-500' :
-                              'bg-zinc-800 text-zinc-400'
-                            }`}>
-                              {activity.activity_type === 'email' ? <Mail size={14} /> :
-                               activity.activity_type === 'note' ? <MessageSquare size={14} /> :
-                               <Clock size={14} />}
-                            </div>
-                            <div className="glass-card p-4 rounded-2xl bg-white/[0.02] border border-white/5">
-                              <div className="flex justify-between items-start mb-2">
-                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                                  {activity.activity_type === 'email' ? 'E-mail Enviado' :
-                                   activity.activity_type === 'note' ? 'Anotação' : 'Atividade'}
-                                </span>
-                                <span className="text-[10px] text-zinc-600 font-mono">
-                                  {new Date(activity.created_at).toLocaleString('pt-BR', {
-                                    day: '2-digit',
-                                    month: '2-digit',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
-                                </span>
-                              </div>
-                              <p className="text-sm text-zinc-300 leading-relaxed">{activity.content}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-10 text-zinc-600 italic text-sm">
-                        Nenhuma interação registrada ainda.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
