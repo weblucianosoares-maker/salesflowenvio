@@ -992,39 +992,67 @@ export function Leads() {
                   </div>
                 </div>
 
-                <div className="glass p-8 rounded-3xl">
+                <div className="glass p-8 rounded-3xl overflow-hidden">
                   <h3 className="text-lg font-bold mb-6 flex items-center gap-3">
                     <Briefcase className="text-primary" />
                     Quadro de Sócios (QSA)
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-8 gap-x-12">
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Nome do 1º Sócio</p>
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-white">{selectedLead.partner_name || 'Não informado'}</p>
-                        {selectedLead.partner_linkedin && (
-                          <a href={selectedLead.partner_linkedin} target="_blank" rel="noreferrer" className="text-[#0077b5] hover:brightness-110">
-                            <Linkedin size={16} />
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">CPF/CNPJ do Sócio</p>
-                      <p className="text-sm font-medium text-zinc-400">{selectedLead.partner_cpf_cnpj || '---'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Faixa Etária</p>
-                      <p className="text-sm font-medium text-white">{selectedLead.partner_age_range || '---'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Qualificação</p>
-                      <p className="text-sm font-medium text-white">{selectedLead.partner_qualification || '---'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Data de Entrada</p>
-                      <p className="text-sm font-medium text-white">{selectedLead.partner_entry_date || '---'}</p>
-                    </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest border-b border-white/5">
+                          <th className="pb-4 pr-4">Nome do Sócio</th>
+                          <th className="pb-4 pr-4">Faixa Etária</th>
+                          <th className="pb-4 pr-4">Qualificação</th>
+                          <th className="pb-4 pr-4">Entrada</th>
+                          <th className="pb-4 text-right">LinkedIn</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {(() => {
+                          const names = (selectedLead.partner_name || '').split(';').filter(Boolean);
+                          const ages = (selectedLead.partner_age_range || '').split(';');
+                          const quals = (selectedLead.partner_qualification || '').split(';');
+                          const dates = (selectedLead.partner_entry_date || '').split(';');
+                          
+                          if (names.length === 0) {
+                            return (
+                              <tr>
+                                <td colSpan={5} className="py-8 text-center text-zinc-500 italic text-sm">
+                                  Nenhum sócio informado
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          return names.map((name: string, idx: number) => (
+                            <tr key={idx} className="hover:bg-white/[0.02] transition-colors group">
+                              <td className="py-4 pr-4 text-sm font-medium text-white group-hover:text-primary transition-colors">
+                                {sanitizeText(name)}
+                              </td>
+                              <td className="py-4 pr-4 text-xs text-zinc-400">
+                                {sanitizeText(ages[idx]) || '---'}
+                              </td>
+                              <td className="py-4 pr-4 text-xs text-zinc-400">
+                                {sanitizeText(quals[idx]) || '---'}
+                              </td>
+                              <td className="py-4 pr-4 text-xs text-zinc-400">
+                                {formatDateBR(dates[idx]) || '---'}
+                              </td>
+                              <td className="py-4 text-right">
+                                {idx === 0 && selectedLead.partner_linkedin ? (
+                                  <a href={selectedLead.partner_linkedin} target="_blank" rel="noreferrer" className="inline-flex p-1.5 bg-blue-500/10 text-blue-500 rounded-md hover:bg-blue-500/20 transition-all">
+                                    <Linkedin size={14} />
+                                  </a>
+                                ) : (
+                                  <span className="text-zinc-700">---</span>
+                                )}
+                              </td>
+                            </tr>
+                          ));
+                        })()}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 

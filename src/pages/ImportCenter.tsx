@@ -118,7 +118,7 @@ export function ImportCenter() {
             partner_name: row['Nome do Sócio'] || row['Sócio'] || row['Sócio 1'] || row['Responsável'] || '',
             partner_age_range: row['Faixa Etária'] || row['Faixa Etária do Sócio'] || '',
             partner_qualification: row['Qualificação do Sócio'] || row['Qualificação'] || '',
-            partner_entry_date: row['Data de Entrada'] || row['Data Entrada Sócio'] || row['Data de Entrada do Sócio'] || '',
+            partner_entry_date: row['Data da Entrada'] || row['Data de Entrada'] || row['Data Entrada Sócio'] || row['Data de Entrada do Sócio'] || '',
             status: 'Novo',
             source: 'Importação Manual'
           };
