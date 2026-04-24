@@ -923,7 +923,11 @@ export function Leads() {
                     </h3>
                     <p className="text-sm text-zinc-300 leading-relaxed italic">
                       "{selectedLead.ai_summary}"
-                         {/* Histórico e Anotações movido para cá */}
+                    </p>
+                  </div>
+                )}
+
+                {/* Histórico e Anotações movido para cá */}
                 <div className="glass p-8 rounded-3xl flex flex-col h-full min-h-[500px]">
                   <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-500 flex items-center gap-2 mb-6">
                     <History size={16} className="text-primary" />
@@ -996,8 +1000,6 @@ export function Leads() {
                       </div>
                     )}
                   </div>
-                </div>
-              </div>                  </div>
                 </div>
               </div>
 
