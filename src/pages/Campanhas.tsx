@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Bold, Italic, Link, Paperclip, Edit3, Tag, Zap, Eye, Users, Send, Clock, AlertTriangle, Settings, CheckCircle2, Loader2, Play, Pause, Trash2, FileText, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { MultiSelect } from '../components/MultiSelect';
 
 interface EmailConfig {
   smtp_user: string;
@@ -29,14 +30,20 @@ export function Campanhas() {
   });
 
   const [filters, setFilters] = useState({
-    city: '',
-    neighborhood: '',
-    cnae: '',
+    city: [] as string[],
+    neighborhood: [] as string[],
+    cnae: [] as string[],
     company_size: '',
     employee_count: '',
     capital_social_range: '',
     has_debts: '',
     estimated_revenue: ''
+  });
+
+  const [filterOptions, setFilterOptions] = useState({
+    cities: [] as string[],
+    neighborhoods: [] as string[],
+    cnaes: [] as string[]
   });
 
   const [queueStats, setQueueStats] = useState({ pending: 0, sent: 0, error: 0 });
@@ -65,7 +72,18 @@ export function Campanhas() {
   useEffect(() => {
     fetchConfig();
     fetchQueueStats();
+    fetchFilterOptions();
   }, []);
+
+  const fetchFilterOptions = async () => {
+    const { data } = await supabase.from('leads').select('address_city, address_neighborhood, cnae');
+    if (data) {
+      const cities = Array.from(new Set(data.map(d => d.address_city).filter(Boolean))).sort();
+      const neighborhoods = Array.from(new Set(data.map(d => d.address_neighborhood).filter(Boolean))).sort();
+      const cnaes = Array.from(new Set(data.map(d => d.cnae).filter(Boolean))).sort();
+      setFilterOptions({ cities, neighborhoods, cnaes });
+    }
+  };
 
   const fetchQueueStats = async () => {
     const { data } = await supabase.from('email_queue').select('status');
@@ -83,9 +101,9 @@ export function Campanhas() {
 
   const buildQuery = (queryObj: any) => {
     let q = queryObj;
-    if (filters.city) q = q.ilike('address_city', `%${filters.city}%`);
-    if (filters.neighborhood) q = q.ilike('address_neighborhood', `%${filters.neighborhood}%`);
-    if (filters.cnae) q = q.ilike('cnae', `%${filters.cnae}%`);
+    if (filters.city && filters.city.length > 0) q = q.in('address_city', filters.city);
+    if (filters.neighborhood && filters.neighborhood.length > 0) q = q.in('address_neighborhood', filters.neighborhood);
+    if (filters.cnae && filters.cnae.length > 0) q = q.in('cnae', filters.cnae);
     if (filters.company_size) q = q.eq('company_size', filters.company_size);
     if (filters.employee_count) q = q.ilike('employee_count', `%${filters.employee_count}%`);
     if (filters.estimated_revenue) q = q.ilike('estimated_revenue', `%${filters.estimated_revenue}%`);
@@ -468,34 +486,31 @@ export function Campanhas() {
             </h4>
             
             <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
-              <div>
+              <div className="z-30 relative">
                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1 px-1">Cidade</label>
-                <input 
-                  type="text" 
-                  value={filters.city}
-                  onChange={(e) => setFilters({...filters, city: e.target.value})}
-                  className="w-full bg-white/5 border border-white/5 rounded-xl p-2.5 text-sm text-white focus:ring-1 focus:ring-primary outline-none" 
-                  placeholder="Ex: São Paulo" 
+                <MultiSelect 
+                  options={filterOptions.cities}
+                  selected={filters.city}
+                  onChange={(val) => setFilters({...filters, city: val})}
+                  placeholder="Selecionar cidades..."
                 />
               </div>
-              <div>
+              <div className="z-20 relative">
                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1 px-1">Bairro</label>
-                <input 
-                  type="text" 
-                  value={filters.neighborhood}
-                  onChange={(e) => setFilters({...filters, neighborhood: e.target.value})}
-                  className="w-full bg-white/5 border border-white/5 rounded-xl p-2.5 text-sm text-white focus:ring-1 focus:ring-primary outline-none" 
-                  placeholder="Ex: Centro" 
+                <MultiSelect 
+                  options={filterOptions.neighborhoods}
+                  selected={filters.neighborhood}
+                  onChange={(val) => setFilters({...filters, neighborhood: val})}
+                  placeholder="Selecionar bairros..."
                 />
               </div>
-              <div>
+              <div className="z-10 relative">
                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1 px-1">Setor (CNAE)</label>
-                <input 
-                  type="text" 
-                  value={filters.cnae}
-                  onChange={(e) => setFilters({...filters, cnae: e.target.value})}
-                  className="w-full bg-white/5 border border-white/5 rounded-xl p-2.5 text-sm text-white focus:ring-1 focus:ring-primary outline-none" 
-                  placeholder="Ex: Tecnologia, Clínicas..." 
+                <MultiSelect 
+                  options={filterOptions.cnaes}
+                  selected={filters.cnae}
+                  onChange={(val) => setFilters({...filters, cnae: val})}
+                  placeholder="Selecionar setores..."
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
