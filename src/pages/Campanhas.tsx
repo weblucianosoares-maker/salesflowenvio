@@ -74,8 +74,68 @@ export function Campanhas() {
     const confirm = window.confirm(`Deseja lançar esta campanha para ${leadCount} leads? Os envios serão fracionados em lotes de ${config.batch_size} a cada ${config.interval_minutes} minutos.`);
     
     if (confirm) {
-      alert('Campanha preparada com sucesso! O motor de envio fracionado foi iniciado em segundo plano.');
-      // Aqui entraria a lógica de popular a tabela email_queue via RPC ou função
+      setIsSaving(true);
+      try {
+        // 1. Criar a Campanha
+        const { data: campaign, error: cError } = await supabase
+          .from('campaigns')
+          .insert({
+            name: `Campanha ${new Date().toLocaleDateString()}`,
+            subject,
+            body: message,
+            status: 'active'
+          })
+          .select()
+          .single();
+
+        if (cError) throw cError;
+
+        // 2. Buscar todos os leads para popular a fila
+        const { data: leads, error: lError } = await supabase
+          .from('leads')
+          .select('*');
+
+        if (lError) throw lError;
+
+        // 3. Preparar a fila (em lotes para não travar o navegador)
+        const queueItems = leads.map(lead => {
+          let personalizedBody = message
+            .replace(/{{Name}}/g, lead.name || '')
+            .replace(/{{Partner}}/g, lead.partner_name || lead.name || '')
+            .replace(/{{City}}/g, lead.address_city || '')
+            .replace(/{{Sector}}/g, lead.cnae || '');
+
+          let personalizedSubject = subject
+            .replace(/{{Name}}/g, lead.name || '')
+            .replace(/{{Partner}}/g, lead.partner_name || lead.name || '')
+            .replace(/{{City}}/g, lead.address_city || '')
+            .replace(/{{Sector}}/g, lead.cnae || '');
+
+          return {
+            campaign_id: campaign.id,
+            lead_id: lead.id,
+            recipient_email: lead.email,
+            subject: personalizedSubject,
+            body_html: personalizedBody,
+            status: 'pending',
+            scheduled_for: new Date(Date.now() + 1000).toISOString() // Começa agora
+          };
+        }).filter(item => item.recipient_email);
+
+        // Inserir na fila em pedaços de 100
+        for (let i = 0; i < queueItems.length; i += 100) {
+          const chunk = queueItems.slice(i, i + 100);
+          const { error: qError } = await supabase.from('email_queue').insert(chunk);
+          if (qError) throw qError;
+        }
+
+        alert('Campanha lançada e fila gerada com sucesso! O motor de envio começará a processar os lotes.');
+      } catch (err) {
+        console.error(err);
+        alert('Erro ao lançar campanha. Verifique se as tabelas foram criadas no Supabase.');
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -304,6 +364,38 @@ export function Campanhas() {
                   Para o Gmail Comum, não ultrapasse 200 envios por dia. Seus parâmetros atuais levarão {Math.ceil(leadCount / 200)} dias para completar.
                 </p>
               </div>
+            </div>
+          </div>
+        {/* Pipeline Queue / Status */}
+        <div className="glass rounded-3xl overflow-hidden">
+          <div className="p-6 bg-white/[0.02] border-b border-white/5 flex justify-between items-center">
+            <h3 className="font-semibold text-sm">Monitor de Envio Fracionado</h3>
+            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2">
+              <Loader2 size={12} className="animate-spin" /> Processando Fila
+            </span>
+          </div>
+          <div className="p-8 grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Aguardando</p>
+              <p className="text-2xl font-black text-white">---</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Enviados</p>
+              <p className="text-2xl font-black text-emerald-500">0</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Próximo Lote</p>
+              <p className="text-sm font-medium text-white flex items-center gap-2">
+                <Clock size={14} className="text-amber-500"/> em 18 minutos
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button className="p-3 bg-white/5 hover:bg-white/10 rounded-xl text-zinc-400 transition-all">
+                <Pause size={18} />
+              </button>
+              <button className="p-3 bg-red-500/10 hover:bg-red-500/20 rounded-xl text-red-500 transition-all">
+                <Trash2 size={18} />
+              </button>
             </div>
           </div>
         </div>
