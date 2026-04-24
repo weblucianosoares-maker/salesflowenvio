@@ -33,6 +33,7 @@ const getMarketFromCNAE = (cnae: string) => {
 const sanitizeText = (text: string | null) => {
   if (!text) return '';
   // Remove o caractere de substituição Unicode e outros artefatos de encoding comuns
+  // Incluindo o losango com interrogação e caracteres de controle
   return text.replace(/[\uFFFD\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim();
 };
 
@@ -940,7 +941,7 @@ export function Leads() {
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">CNAE Principal</p>
-                      <p className="text-sm font-medium text-white">{selectedLead.cnae || 'N/A'}</p>
+                      <p className="text-sm font-medium text-white">{sanitizeText(selectedLead.cnae) || 'N/A'}</p>
                     </div>
                     <div className="col-span-full space-y-1">
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Descrição do CNAE</p>
