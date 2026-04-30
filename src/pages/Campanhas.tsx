@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bold, Italic, Link, Paperclip, Edit3, Tag, Zap, Eye, Users, Send, Clock, AlertTriangle, Settings, CheckCircle2, Loader2, Play, Pause, Trash2, FileText, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Bold, Italic, Link, Paperclip, Edit3, Tag, Zap, Eye, Users, Send, Clock, AlertTriangle, Settings, CheckCircle2, Loader2, Play, Pause, Trash2, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { MultiSelect } from '../components/MultiSelect';
 
@@ -99,27 +99,6 @@ export function Campanhas() {
   });
 
   const [queueStats, setQueueStats] = useState({ pending: 0, sent: 0, error: 0 });
-
-  const templates = [
-    {
-      id: 1,
-      name: "Opção 1: Autoridade e Localização",
-      subject: "Gestão de benefícios para a {{Razão}} em {{Cidade}}",
-      body: "Olá, {{Nome_do_Sócio}}.\n\nAcompanhando o mercado de {{Texto_CNAE_Principal}} aqui no Rio de Janeiro, notei que a {{Fantasia}} tem se destacado no setor de {{Porte_Empresa}}. Sou Luciano Soares, consultor especializado em saúde empresarial, e trabalho ajudando empresas com o perfil da sua a reduzirem em até 30% o custo fixo com planos de saúde, sem perder a qualidade da rede referenciada.\n\nComo vocês estão situados em {{Bairro}}, existem opções regionais e nacionais que se encaixam muito bem no quadro de {{Quadro_de_Funcionários}} colaboradores que vocês possuem.\n\nTeria 5 minutos para uma breve conversa por telefone no número {{Telefone_1}} ainda esta semana?"
-    },
-    {
-      id: 2,
-      name: "Opção 2: Redução de Custos (RevOps)",
-      subject: "Eficiência operacional e saúde: Estratégia para a {{Fantasia}}",
-      body: "Bom dia, {{Nome_do_Sócio}}.\n\nVi que a {{Razão}} opera sob o regime {{Regime_Tributário}}. Muitas empresas desse porte acabam pagando taxas abusivas em benefícios por falta de uma gestão estratégica de sinistralidade.\n\nMeu trabalho é implementar uma 'unidade de receita' indireta, otimizando seus contratos de saúde para que o valor economizado possa ser reinvestido na operação da sua empresa em {{Cidade}}. Analisei que vocês possuem um faturamento estimado de {{Faturamento_Estimado}}, o que os coloca em uma categoria de negociação exclusiva junto às operadoras.\n\nPodemos validar se o seu contrato atual está atualizado com as novas tabelas de 2026?"
-    },
-    {
-      id: 3,
-      name: "Opção 3: Direta e Curta (Mobile)",
-      subject: "Pergunta rápida para a {{Fantasia}}",
-      body: "Oi, {{Nome_do_Sócio}}, tudo bem?\n\nSou o Luciano, consultor de benefícios. Estou entrando em contato porque vi que a {{Fantasia}} atua em {{Cidade}} e gostaria de saber: quem é a pessoa responsável hoje por revisar os custos de plano de saúde e benefícios de {{Quadro_de_Funcionários}}?\n\nTenho uma análise de mercado específica para {{Texto_CNAE_Principal}} que pode interessar vocês.\n\nUm abraço,"
-    }
-  ];
 
   useEffect(() => {
     fetchConfig();
@@ -412,27 +391,6 @@ export function Campanhas() {
         {/* Editor & Config */}
         <div className="col-span-8 space-y-6">
           <div className="glass rounded-3xl p-8">
-            <div className="mb-6">
-              <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <FileText size={14} className="text-primary"/> Modelos Prontos
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {templates.map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => {
-                      setSubject(t.subject);
-                      setMessage(t.body);
-                    }}
-                    className="p-4 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-primary/10 hover:border-primary/30 transition-all text-left flex flex-col gap-2 group"
-                  >
-                    <p className="text-xs font-bold text-white group-hover:text-primary transition-colors">{t.name}</p>
-                    <p className="text-[10px] text-zinc-400 line-clamp-2 leading-relaxed">{t.subject}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/5 relative">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-primary/10 rounded-lg">
