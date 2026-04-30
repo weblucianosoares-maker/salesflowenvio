@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mail, RefreshCw, CheckCircle2, Clock, AlertCircle, Trash2, Send, X, Eye } from 'lucide-react';
+import { Mail, RefreshCw, CheckCircle2, Clock, AlertCircle, Trash2, Send, X, Eye, Eraser, RotateCcw, Info, Search, ArrowUpDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export function Inbox() {
@@ -8,10 +8,39 @@ export function Inbox() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [stats, setStats] = useState({ pending: 0, sent: 0, error: 0 });
   const [selectedEmail, setSelectedEmail] = useState<any | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
 
   useEffect(() => {
     fetchEmails();
   }, []);
+
+  const handleSort = (key: string) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const filteredAndSortedEmails = emails
+    .filter(email => 
+      email.recipient_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      email.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      email.campaigns?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      let aVal = a[sortConfig.key];
+      let bVal = b[sortConfig.key];
+      
+      if (sortConfig.key === 'campaigns') {
+        aVal = a.campaigns?.name || '';
+        bVal = b.campaigns?.name || '';
+      }
+
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
 
   const fetchEmails = async () => {
     setIsLoading(true);
@@ -73,29 +102,106 @@ export function Inbox() {
     }
   };
 
+  const clearQueue = async () => {
+    const confirm = window.confirm('Deseja realmente limpar TODO o histórico e a fila de envios? Esta ação não pode ser desfeita.');
+    if (!confirm) return;
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.from('email_queue').delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+      if (error) throw error;
+      fetchEmails();
+      alert('Histórico e fila limpos com sucesso!');
+    } catch (err: any) {
+      alert(`Erro ao limpar fila: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const retryFailed = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('email_queue')
+        .update({ status: 'pending', error_message: null })
+        .eq('status', 'error');
+      
+      if (error) throw error;
+      fetchEmails();
+      alert('E-mails com erro foram movidos de volta para a fila!');
+    } catch (err: any) {
+      alert(`Erro ao redefinir falhas: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetEmail = async (id: string) => {
+    const { error } = await supabase
+      .from('email_queue')
+      .update({ status: 'pending', error_message: null })
+      .eq('id', id);
+    
+    if (!error) {
+      fetchEmails();
+    }
+  };
+
   return (
     <div className="p-8 text-white min-h-screen bg-background pt-20 premium-gradient">
-      <div className="flex justify-between items-center mb-10">
+      <div className="flex justify-between items-end mb-10">
         <div>
           <h2 className="text-4xl font-bold tracking-tight mb-2">Caixa de E-mails</h2>
-          <p className="text-metal-silver font-medium opacity-60">Histórico de disparos, pendências e erros das suas campanhas.</p>
+          <p className="text-metal-silver font-medium opacity-60">Monitore o processamento da fila, veja o histórico de entregas e corrija falhas de disparo.</p>
         </div>
-        <div className="flex gap-4">
-          <button 
-            onClick={fetchEmails}
-            className="glass border border-white/10 text-white px-6 py-3 rounded-xl font-bold hover:bg-white/5 transition-all flex items-center gap-2"
-          >
-            <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
-            ATUALIZAR
-          </button>
-          <button 
-            onClick={processQueue}
-            disabled={isProcessing}
-            className="bg-primary text-white px-8 py-3 rounded-xl font-bold hover:brightness-110 shadow-lg shadow-primary/20 transition-all flex items-center gap-2 disabled:opacity-50"
-          >
-            {isProcessing ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
-            {isProcessing ? 'ENVIANDO...' : 'PROCESSAR FILA AGORA'}
-          </button>
+        <div className="flex flex-col gap-3">
+          <div className="flex gap-3 justify-end">
+             <button 
+              onClick={retryFailed}
+              disabled={stats.error === 0 || isLoading}
+              className="bg-amber-500/10 text-amber-500 border border-amber-500/20 px-4 py-2 rounded-xl text-xs font-bold hover:bg-amber-500/20 transition-all flex items-center gap-2 disabled:opacity-30"
+            >
+              <RotateCcw size={14} />
+              REENVIAR FALHAS
+            </button>
+            <button 
+              onClick={clearQueue}
+              className="bg-red-500/10 text-red-500 border border-red-500/20 px-4 py-2 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-all flex items-center gap-2"
+            >
+              <Eraser size={14} />
+              LIMPAR TUDO
+            </button>
+          </div>
+          <div className="flex gap-4">
+            <button 
+              onClick={fetchEmails}
+              className="glass border border-white/10 text-white px-6 py-3 rounded-xl font-bold hover:bg-white/5 transition-all flex items-center gap-2"
+            >
+              <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+              ATUALIZAR
+            </button>
+            <button 
+              onClick={processQueue}
+              disabled={isProcessing || stats.pending === 0}
+              className="bg-primary text-white px-8 py-3 rounded-xl font-bold hover:brightness-110 shadow-lg shadow-primary/20 transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              {isProcessing ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
+              {isProcessing ? 'PROCESSANDO...' : 'DISPARAR AGORA'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-blue-500/5 border border-blue-500/20 rounded-2xl p-4 mb-8 flex items-start gap-4">
+        <div className="p-2 bg-blue-500/20 rounded-lg shrink-0">
+          <Info className="text-blue-400" size={18} />
+        </div>
+        <div className="space-y-1">
+          <h4 className="text-sm font-bold text-blue-400">Como funciona o processamento?</h4>
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            Os e-mails são agendados e aguardam na fila. O botão <span className="text-white font-bold">"Disparar Agora"</span> inicia o motor de envio imediatamente. Caso ocorra um erro (como senha do Gmail inválida), você pode corrigir a configuração nas Campanhas e usar o botão <span className="text-amber-500 font-bold">"Reenviar Falhas"</span>.
+          </p>
         </div>
       </div>
 
@@ -130,9 +236,21 @@ export function Inbox() {
       </div>
 
       <div className="glass rounded-3xl overflow-hidden">
-        <div className="p-6 bg-white/[0.02] border-b border-white/5 flex items-center gap-3">
-          <Mail size={18} className="text-primary" />
-          <h3 className="font-semibold text-sm">Histórico Recente</h3>
+        <div className="p-6 bg-white/[0.02] border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Mail size={18} className="text-primary" />
+            <h3 className="font-semibold text-sm">Histórico Recente</h3>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
+            <input 
+              type="text" 
+              placeholder="Buscar por e-mail, assunto ou campanha..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-xs text-white placeholder:text-zinc-500 focus:ring-1 focus:ring-primary outline-none w-full md:w-80 transition-all"
+            />
+          </div>
         </div>
         
         {isLoading ? (
@@ -144,16 +262,26 @@ export function Inbox() {
             <table className="w-full text-left">
               <thead>
                 <tr className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-white/[0.01] border-b border-white/5">
-                  <th className="px-8 py-4">Destinatário</th>
-                  <th className="px-6 py-4">Assunto</th>
-                  <th className="px-6 py-4">Campanha</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Data/Hora</th>
+                  <th className="px-8 py-4 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('recipient_email')}>
+                    <div className="flex items-center gap-2">Destinatário <ArrowUpDown size={10} /></div>
+                  </th>
+                  <th className="px-6 py-4 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('subject')}>
+                    <div className="flex items-center gap-2">Assunto <ArrowUpDown size={10} /></div>
+                  </th>
+                  <th className="px-6 py-4 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('campaigns')}>
+                    <div className="flex items-center gap-2">Campanha <ArrowUpDown size={10} /></div>
+                  </th>
+                  <th className="px-6 py-4 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('status')}>
+                    <div className="flex items-center gap-2">Status <ArrowUpDown size={10} /></div>
+                  </th>
+                  <th className="px-6 py-4 cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('created_at')}>
+                    <div className="flex items-center gap-2">Data/Hora <ArrowUpDown size={10} /></div>
+                  </th>
                   <th className="px-8 py-4"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {emails.map((email) => (
+                {filteredAndSortedEmails.map((email) => (
                   <tr 
                     key={email.id} 
                     onClick={() => setSelectedEmail(email)}
@@ -167,16 +295,32 @@ export function Inbox() {
                       {email.campaigns?.name || 'Desconhecida'}
                     </td>
                     <td className="px-6 py-4">
-                      {email.status === 'sent' && <span className="px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded-md text-[10px] font-bold uppercase">Enviado</span>}
-                      {email.status === 'pending' && <span className="px-2 py-1 bg-amber-500/10 text-amber-500 rounded-md text-[10px] font-bold uppercase">Na Fila</span>}
+                      {email.status === 'sent' && (
+                        <div className="flex flex-col">
+                          <span className="px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded-md text-[10px] font-bold uppercase w-fit">Enviado</span>
+                          {email.sent_at && <span className="text-[9px] text-emerald-500/50 mt-1">{new Date(email.sent_at).toLocaleTimeString()}</span>}
+                        </div>
+                      )}
+                      {email.status === 'pending' && <span className="px-2 py-1 bg-amber-500/10 text-amber-500 rounded-md text-[10px] font-bold uppercase w-fit">Na Fila</span>}
                       {email.status === 'error' && (
-                        <span className="px-2 py-1 bg-red-500/10 text-red-500 rounded-md text-[10px] font-bold uppercase cursor-help" title={email.error_message}>
-                          Erro
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className="px-2 py-1 bg-red-500/10 text-red-500 rounded-md text-[10px] font-bold uppercase cursor-help w-fit" title={email.error_message}>
+                            Erro de Envio
+                          </span>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); resetEmail(email.id); }}
+                            className="text-[9px] text-blue-400 hover:underline text-left"
+                          >
+                            Tentar novamente
+                          </button>
+                        </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-xs text-zinc-500">
-                      {new Date(email.created_at).toLocaleString()}
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="text-xs text-zinc-300">{new Date(email.created_at).toLocaleDateString()}</span>
+                        <span className="text-[10px] text-zinc-500">{new Date(email.created_at).toLocaleTimeString()}</span>
+                      </div>
                     </td>
                     <td className="px-8 py-4 text-right">
                       <div className="flex items-center justify-end gap-3">
