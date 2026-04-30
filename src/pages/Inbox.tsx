@@ -149,47 +149,45 @@ export function Inbox() {
   };
 
   return (
-    <div className="p-8 text-white min-h-screen bg-background pt-20 premium-gradient">
-      <div className="flex justify-between items-end mb-10">
+    <div className="p-8 text-white min-h-screen bg-background pt-8 premium-gradient">
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-4xl font-bold tracking-tight mb-2">Caixa de E-mails</h2>
-          <p className="text-metal-silver font-medium opacity-60">Monitore o processamento da fila, veja o histórico de entregas e corrija falhas de disparo.</p>
+          <h2 className="text-4xl font-bold tracking-tight mb-1">Caixa de E-mails</h2>
+          <p className="text-metal-silver text-sm font-medium opacity-60">Monitore o processamento, entregas e corrija falhas.</p>
         </div>
-        <div className="flex flex-col gap-3">
-          <div className="flex gap-3 justify-end">
-             <button 
+        <div className="flex items-center gap-3">
+          <div className="flex gap-2 mr-4 border-r border-white/10 pr-4">
+            <button 
               onClick={retryFailed}
               disabled={stats.error === 0 || isLoading}
-              className="bg-amber-500/10 text-amber-500 border border-amber-500/20 px-4 py-2 rounded-xl text-xs font-bold hover:bg-amber-500/20 transition-all flex items-center gap-2 disabled:opacity-30"
+              className="bg-amber-500/10 text-amber-500 border border-amber-500/10 px-3 py-2 rounded-lg text-[10px] font-bold hover:bg-amber-500/20 transition-all flex items-center gap-2 disabled:opacity-20"
             >
-              <RotateCcw size={14} />
+              <RotateCcw size={12} />
               REENVIAR FALHAS
             </button>
             <button 
               onClick={clearQueue}
-              className="bg-red-500/10 text-red-500 border border-red-500/20 px-4 py-2 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-all flex items-center gap-2"
+              className="bg-red-500/10 text-red-500 border border-red-500/10 px-3 py-2 rounded-lg text-[10px] font-bold hover:bg-red-500/20 transition-all flex items-center gap-2"
             >
-              <Eraser size={14} />
+              <Eraser size={12} />
               LIMPAR TUDO
             </button>
           </div>
-          <div className="flex gap-4">
-            <button 
-              onClick={fetchEmails}
-              className="glass border border-white/10 text-white px-6 py-3 rounded-xl font-bold hover:bg-white/5 transition-all flex items-center gap-2"
-            >
-              <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
-              ATUALIZAR
-            </button>
-            <button 
-              onClick={processQueue}
-              disabled={isProcessing || stats.pending === 0}
-              className="bg-primary text-white px-8 py-3 rounded-xl font-bold hover:brightness-110 shadow-lg shadow-primary/20 transition-all flex items-center gap-2 disabled:opacity-50"
-            >
-              {isProcessing ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
-              {isProcessing ? 'PROCESSANDO...' : 'DISPARAR AGORA'}
-            </button>
-          </div>
+          <button 
+            onClick={fetchEmails}
+            className="glass border border-white/10 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-white/5 transition-all flex items-center gap-2"
+          >
+            <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
+            ATUALIZAR
+          </button>
+          <button 
+            onClick={processQueue}
+            disabled={isProcessing || stats.pending === 0}
+            className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:brightness-110 shadow-lg shadow-primary/20 transition-all flex items-center gap-2 disabled:opacity-50"
+          >
+            {isProcessing ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
+            {isProcessing ? 'PROCESSANDO...' : 'DISPARAR AGORA'}
+          </button>
         </div>
       </div>
 
