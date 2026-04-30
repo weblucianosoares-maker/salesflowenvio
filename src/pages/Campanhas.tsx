@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bold, Italic, Link, Paperclip, Edit3, Tag, Zap, Eye, Users, Send, Clock, AlertTriangle, Settings, CheckCircle2, Loader2, Play, Pause, Trash2, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { MultiSelect } from '../components/MultiSelect';
@@ -99,6 +99,41 @@ export function Campanhas() {
   });
 
   const [queueStats, setQueueStats] = useState({ pending: 0, sent: 0, error: 0 });
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const applyFormat = (type: 'bold' | 'italic' | 'link') => {
+    if (!textareaRef.current) return;
+    
+    const start = textareaRef.current.selectionStart;
+    const end = textareaRef.current.selectionEnd;
+    const selectedText = message.substring(start, end);
+    let formattedText = '';
+
+    switch (type) {
+      case 'bold':
+        formattedText = `<b>${selectedText}</b>`;
+        break;
+      case 'italic':
+        formattedText = `<i>${selectedText}</i>`;
+        break;
+      case 'link':
+        formattedText = `<a href="https://">${selectedText || 'Link'}</a>`;
+        break;
+    }
+
+    const newMessage = message.substring(0, start) + formattedText + message.substring(end);
+    setMessage(newMessage);
+
+    // Reposicionar cursor após a formatação
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        const newCursorPos = start + formattedText.length;
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 0);
+  };
 
   useEffect(() => {
     fetchConfig();
@@ -107,12 +142,25 @@ export function Campanhas() {
   }, []);
 
   const fetchFilterOptions = async () => {
-    const { data } = await supabase.from('leads').select('address_city, address_neighborhood, cnae');
-    if (data) {
-      const cities = Array.from(new Set(data.map(d => d.address_city).filter(Boolean))).sort();
-      const neighborhoods = Array.from(new Set(data.map(d => d.address_neighborhood).filter(Boolean))).sort();
-      const cnaes = Array.from(new Set(data.map(d => d.cnae).filter(Boolean))).sort();
-      setFilterOptions({ cities, neighborhoods, cnaes });
+    try {
+      // Limitamos a busca para os últimos 5000 registros para evitar travamento do navegador
+      // Em uma base de 322k+, carregar tudo via JS é inviável
+      const { data, error } = await supabase
+        .from('leads')
+        .select('address_city, address_neighborhood, cnae')
+        .order('created_at', { ascending: false })
+        .limit(5000);
+
+      if (error) throw error;
+
+      if (data) {
+        const cities = Array.from(new Set(data.map(d => d.address_city).filter(Boolean))).sort();
+        const neighborhoods = Array.from(new Set(data.map(d => d.address_neighborhood).filter(Boolean))).sort();
+        const cnaes = Array.from(new Set(data.map(d => d.cnae).filter(Boolean))).sort();
+        setFilterOptions({ cities, neighborhoods, cnaes });
+      }
+    } catch (err) {
+      console.error('Erro ao carregar opções de filtro:', err);
     }
   };
 
@@ -155,15 +203,26 @@ export function Campanhas() {
   };
 
   const fetchLeadCount = async () => {
-    const { count } = await buildQuery(supabase.from('leads').select('*', { count: 'exact', head: true }));
-    setLeadCount(count || 0);
+    setIsLoadingPreview(true);
+    try {
+      const { count, error: countError } = await buildQuery(supabase.from('leads').select('*', { count: 'exact', head: true }));
+      if (countError) throw countError;
+      setLeadCount(count || 0);
 
-    const { data } = await buildQuery(supabase.from('leads').select('*').order('created_at', { ascending: false }).limit(5));
-    if (data) {
-      setPreviewLeads(data);
-      setCurrentPreviewIndex(0);
-    } else {
+      const { data, error: dataError } = await buildQuery(supabase.from('leads').select('*').order('created_at', { ascending: false }).limit(5));
+      if (dataError) throw dataError;
+      
+      if (data) {
+        setPreviewLeads(data);
+        setCurrentPreviewIndex(0);
+      } else {
+        setPreviewLeads([]);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar leads:', err);
       setPreviewLeads([]);
+    } finally {
+      setIsLoadingPreview(false);
     }
   };
 
@@ -241,9 +300,11 @@ export function Campanhas() {
           return;
         }
 
-        // 4. Preparar a fila (em lotes para não travar o navegador)
+            // 4. Preparar a fila (em lotes para não travar o navegador)
         const queueItems = validLeads.map(lead => {
-          let personalizedBody = personalizeEmailText(message, lead);
+          // Converter quebras de linha para <br> e garantir HTML válido
+          const htmlMessage = message.replace(/\n/g, '<br>');
+          let personalizedBody = personalizeEmailText(htmlMessage, lead);
           let personalizedSubject = personalizeEmailText(subject, lead);
 
           return {
@@ -253,7 +314,7 @@ export function Campanhas() {
             subject: personalizedSubject,
             body_html: personalizedBody,
             status: 'pending',
-            scheduled_for: new Date(Date.now() + 1000).toISOString() // Começa agora
+            scheduled_for: new Date(Date.now() + 1000).toISOString()
           };
         }).filter(item => item.recipient_email);
 
@@ -400,11 +461,33 @@ export function Campanhas() {
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex gap-1 border-white/10 pl-4">
-                  {[Bold, Italic, Link, Paperclip].map((Icon, i) => (
-                    <button key={i} className="p-2.5 hover:bg-white/5 rounded-lg text-zinc-500 hover:text-white transition-colors">
-                      <Icon size={18} />
-                    </button>
-                  ))}
+                  <button 
+                    onClick={() => applyFormat('bold')}
+                    className="p-2.5 hover:bg-white/5 rounded-lg text-zinc-500 hover:text-white transition-colors"
+                    title="Negrito"
+                  >
+                    <Bold size={18} />
+                  </button>
+                  <button 
+                    onClick={() => applyFormat('italic')}
+                    className="p-2.5 hover:bg-white/5 rounded-lg text-zinc-500 hover:text-white transition-colors"
+                    title="Itálico"
+                  >
+                    <Italic size={18} />
+                  </button>
+                  <button 
+                    onClick={() => applyFormat('link')}
+                    className="p-2.5 hover:bg-white/5 rounded-lg text-zinc-500 hover:text-white transition-colors"
+                    title="Inserir Link"
+                  >
+                    <Link size={18} />
+                  </button>
+                  <button 
+                    className="p-2.5 hover:bg-white/5 rounded-lg text-zinc-500 hover:text-white transition-colors opacity-30 cursor-not-allowed"
+                    title="Anexos (Em breve)"
+                  >
+                    <Paperclip size={18} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -423,6 +506,7 @@ export function Campanhas() {
               <div>
                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2 px-1">Mensagem</label>
                 <textarea 
+                  ref={textareaRef}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   className="w-full bg-white/5 border border-white/5 rounded-2xl p-6 text-white h-80 focus:ring-1 focus:ring-primary outline-none leading-relaxed resize-none" 
@@ -578,7 +662,7 @@ export function Campanhas() {
                 <Eye className="text-primary" size={18}/> 
                 Live Preview
               </h4>
-              {previewLeads.length > 0 && (
+              {!isLoadingPreview && previewLeads.length > 0 && (
                 <div className="flex items-center gap-2 bg-white/5 px-2 py-1 rounded-lg">
                   <button onClick={() => setCurrentPreviewIndex(p => Math.max(0, p - 1))} disabled={currentPreviewIndex === 0} className="p-1 hover:text-white text-zinc-500 disabled:opacity-30 transition-colors">
                      <ChevronLeft size={16} />
@@ -593,28 +677,29 @@ export function Campanhas() {
               )}
             </div>
             
-            {previewLeads.length > 0 ? (() => {
+            {isLoadingPreview ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center">
+                <Loader2 className="animate-spin text-primary mb-4" size={32} />
+                <p className="text-xs text-zinc-500">Buscando leads na base...</p>
+              </div>
+            ) : previewLeads.length > 0 ? (() => {
                const lead = previewLeads[currentPreviewIndex];
+               const personalizedSubject = personalizeEmailText(subject || 'Sem Assunto', lead);
+               const personalizedBody = personalizeEmailText(message || 'Escreva sua mensagem para ver o preview...', lead);
                
-               let personalizedBody = personalizeEmailText(message, lead);
-               let personalizedSubject = personalizeEmailText(subject, lead);
-
                return (
-                 <div className="flex-1 bg-[#121316] border border-white/5 rounded-2xl p-6 overflow-y-auto custom-scrollbar">
-                   <div className="mb-4 pb-4 border-b border-white/5">
-                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Para:</p>
-                     <p className="text-sm font-bold text-blue-400">{lead.email || 'sem-email@exemplo.com'}</p>
-                     <p className="text-xs text-zinc-400 mt-1">{lead.nome_fantasia || lead.name}</p>
+                 <div className="flex-1 flex flex-col min-h-0">
+                   <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 mb-4">
+                     <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Para</div>
+                     <div className="text-sm text-blue-400 mb-1 break-all font-bold">{lead.email}</div>
+                     <div className="text-[10px] text-zinc-500 mb-3">{lead.nome_fantasia || lead.name || 'Empresa sem nome'}</div>
+                     
+                     <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Assunto</div>
+                     <div className="text-sm text-white font-medium">{personalizedSubject}</div>
                    </div>
-                   <div className="mb-4 pb-4 border-b border-white/5">
-                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Assunto:</p>
-                     <p className="text-sm font-bold text-white">{personalizedSubject || <span className="text-zinc-600 font-normal italic">Preencha o assunto</span>}</p>
-                   </div>
-                   <div>
-                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-3">Mensagem:</p>
-                     <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
-                       {personalizedBody || <span className="text-zinc-600 font-normal italic">Escreva sua mensagem para ver a renderização aqui...</span>}
-                     </div>
+
+                   <div className="flex-1 bg-white/[0.02] border border-white/5 rounded-xl p-6 overflow-y-auto text-sm text-zinc-300 leading-relaxed custom-scrollbar">
+                     <div dangerouslySetInnerHTML={{ __html: personalizedBody.replace(/\n/g, '<br>') }} />
                    </div>
                  </div>
                );
@@ -623,7 +708,7 @@ export function Campanhas() {
                  <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
                    <Eye className="text-zinc-500 opacity-20" size={40}/>
                  </div>
-                 <p className="text-xs text-zinc-500 px-8">Carregando leads da base de dados...</p>
+                 <p className="text-xs text-zinc-500 px-8">Nenhum lead encontrado com os filtros atuais.</p>
                </div>
             )}
           </div>
