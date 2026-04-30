@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Mail, RefreshCw, CheckCircle2, Clock, AlertCircle, Trash2, Send, X, Eye, Eraser, RotateCcw, Info, Search, ArrowUpDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -22,25 +22,31 @@ export function Inbox() {
     }));
   };
 
-  const filteredAndSortedEmails = emails
-    .filter(email => 
-      email.recipient_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      email.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      email.campaigns?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => {
-      let aVal = a[sortConfig.key];
-      let bVal = b[sortConfig.key];
-      
-      if (sortConfig.key === 'campaigns') {
-        aVal = a.campaigns?.name || '';
-        bVal = b.campaigns?.name || '';
-      }
+  const displayEmails = useMemo(() => {
+    return [...emails]
+      .filter(email => 
+        email.recipient_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        email.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        email.campaigns?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .sort((a, b) => {
+        let aVal: any = a[sortConfig.key];
+        let bVal: any = b[sortConfig.key];
+        
+        if (sortConfig.key === 'campaigns') {
+          aVal = a.campaigns?.name || '';
+          bVal = b.campaigns?.name || '';
+        }
 
-      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
-      return 0;
-    });
+        // Garantir que temos strings ou números para comparar
+        aVal = aVal || '';
+        bVal = bVal || '';
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+  }, [emails, searchTerm, sortConfig]);
 
   const fetchEmails = async () => {
     setIsLoading(true);
@@ -279,7 +285,7 @@ export function Inbox() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {filteredAndSortedEmails.map((email) => (
+                {displayEmails.map((email) => (
                   <tr 
                     key={email.id} 
                     onClick={() => setSelectedEmail(email)}
