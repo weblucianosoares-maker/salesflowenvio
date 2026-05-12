@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Filter, Search, Plus, MoreHorizontal, MapPin, Building2, Briefcase, Loader2, Download, Trash2, X, Phone, Mail, Globe, Database, MessageSquare, Send, Clock, History, Sparkles, Linkedin, Instagram, Facebook } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { DiscoveryModal } from '../components/DiscoveryModal';
 
 const getMarketFromCNAE = (cnae: any) => {
   if (!cnae) return 'Não identificado';
@@ -46,6 +47,7 @@ export function Leads() {
   const [filterState, setFilterState] = useState('Todos os Estados');
   const [filterCity, setFilterCity] = useState('Todas as Cidades');
   const [filterNeighborhood, setFilterNeighborhood] = useState('Todos os Bairros');
+  const [filterCNAE, setFilterCNAE] = useState('');
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
   const [revenueRange, setRevenueRange] = useState(50000000);
@@ -59,6 +61,7 @@ export function Leads() {
   const [newNote, setNewNote] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
+  const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false);
 
   const [filterOptions, setFilterOptions] = useState({
     states: [] as string[],
@@ -111,7 +114,7 @@ export function Leads() {
   useEffect(() => {
     setPage(0);
     fetchLeads();
-  }, [searchTerm, filterState, filterCity, filterNeighborhood, selectedSizes, selectedSectors, revenueRange]);
+  }, [searchTerm, filterState, filterCity, filterNeighborhood, filterCNAE, selectedSizes, selectedSectors, revenueRange]);
 
   useEffect(() => {
     fetchLeads();
@@ -294,9 +297,9 @@ export function Leads() {
         const cleanTerm = searchTerm.replace(/\D/g, '');
         if (cleanTerm && /^\d+$/.test(cleanTerm)) {
           // Se for numérico, busca pelo CNPJ limpo OU pelo termo original nos outros campos
-          query = query.or(`cnpj.ilike.%${cleanTerm}%,name.ilike.%${searchTerm}%,nome_cliente.ilike.%${searchTerm}%,address_city.ilike.%${searchTerm}%`);
+          query = query.or(`cnpj.ilike.%${cleanTerm}%,name.ilike.%${searchTerm}%,nome_cliente.ilike.%${searchTerm}%,address_city.ilike.%${searchTerm}%,sector.ilike.%${searchTerm}%,cnae.ilike.%${searchTerm}%`);
         } else {
-          query = query.or(`cnpj.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%,nome_cliente.ilike.%${searchTerm}%,address_city.ilike.%${searchTerm}%`);
+          query = query.or(`cnpj.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%,nome_cliente.ilike.%${searchTerm}%,address_city.ilike.%${searchTerm}%,sector.ilike.%${searchTerm}%,cnae_description.ilike.%${searchTerm}%`);
         }
       }
 
@@ -311,6 +314,10 @@ export function Leads() {
 
       if (filterNeighborhood !== 'Todos os Bairros') {
         query = query.eq('address_neighborhood', filterNeighborhood);
+      }
+
+      if (filterCNAE) {
+        query = query.ilike('cnae', `%${filterCNAE}%`);
       }
 
       if (selectedSizes.length > 0) {
@@ -491,6 +498,7 @@ export function Leads() {
                 setFilterState('Todos os Estados');
                 setFilterCity('Todas as Cidades');
                 setFilterNeighborhood('Todos os Bairros');
+                setFilterCNAE('');
                 setSearchTerm('');
                 setSelectedSizes([]);
                 setSelectedSectors([]);
@@ -542,6 +550,17 @@ export function Leads() {
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-3">CNAE Fiscal</label>
+              <input 
+                type="text" 
+                placeholder="Ex: 4120400"
+                value={filterCNAE}
+                onChange={(e) => setFilterCNAE(e.target.value)}
+                className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:ring-1 focus:ring-primary outline-none transition-all"
+              />
             </div>
 
             <div>
@@ -644,6 +663,13 @@ export function Leads() {
             >
               <Download size={18} />
               Exportar
+            </button>
+            <button 
+              onClick={() => setIsDiscoveryOpen(true)}
+              className="glass border border-emerald-500/30 text-emerald-500 px-5 py-2 rounded-xl text-sm font-semibold hover:bg-emerald-500/10 transition-all flex items-center gap-2"
+            >
+              <Sparkles size={18} />
+              Buscar Novos Leads
             </button>
             <button className="bg-primary text-white px-5 py-2 rounded-xl text-sm font-semibold hover:brightness-110 shadow-lg shadow-primary/20 transition-all flex items-center gap-2">
               <Plus size={18} />
@@ -1217,6 +1243,12 @@ export function Leads() {
           </div>
         </div>
       )}
+
+      <DiscoveryModal 
+        isOpen={isDiscoveryOpen} 
+        onClose={() => setIsDiscoveryOpen(false)}
+        onImportSuccess={fetchLeads}
+      />
     </div>
   );
 }
