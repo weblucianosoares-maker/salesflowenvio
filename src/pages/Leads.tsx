@@ -183,14 +183,14 @@ export function Leads() {
 
   const fetchCities = async (state: string) => {
     try {
-      const { data } = await supabase
-        .from('leads')
-        .select('address_city')
-        .eq('address_state', state)
-        .not('address_city', 'is', null)
-        .order('address_city');
+      const { data, error } = await supabase.rpc('get_distinct_values', { 
+        col_name: 'address_city',
+        filter_col: 'address_state',
+        filter_val: state
+      });
       
-      const uniqueCities = Array.from(new Set(data?.map(i => i.address_city))).filter(Boolean) as string[];
+      if (error) throw error;
+      const uniqueCities = data.map((i: any) => i.value);
       setFilterOptions(prev => ({ ...prev, cities: uniqueCities }));
     } catch (error) {
       console.error('Error fetching cities:', error);
@@ -199,14 +199,14 @@ export function Leads() {
 
   const fetchNeighborhoods = async (city: string) => {
     try {
-      const { data } = await supabase
-        .from('leads')
-        .select('address_neighborhood')
-        .eq('address_city', city)
-        .not('address_neighborhood', 'is', null)
-        .order('address_neighborhood');
+      const { data, error } = await supabase.rpc('get_distinct_values', { 
+        col_name: 'address_neighborhood',
+        filter_col: 'address_city',
+        filter_val: city
+      });
       
-      const uniqueNeighborhoods = Array.from(new Set(data?.map(i => i.address_neighborhood))).filter(Boolean) as string[];
+      if (error) throw error;
+      const uniqueNeighborhoods = data.map((i: any) => i.value);
       setFilterOptions(prev => ({ ...prev, neighborhoods: uniqueNeighborhoods }));
     } catch (error) {
       console.error('Error fetching neighborhoods:', error);
