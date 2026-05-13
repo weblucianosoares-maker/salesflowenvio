@@ -129,37 +129,49 @@ export function Leads() {
   }, [filterCity]);
 
   const fetchInitialFilterOptions = async () => {
+    // Carregar Estados
     try {
       const { data: stateData, error: stateError } = await supabase.rpc('get_distinct_values', { 
         col_name: 'address_state',
         filter_col: null,
         filter_val: null
       });
+      
+      if (!stateError && stateData) {
+        setFilterOptions(prev => ({ ...prev, states: stateData.map((i: any) => i.value) }));
+      } else {
+        const { data: sData } = await supabase.from('leads').select('address_state').not('address_state', 'is', null).order('address_state');
+        const uniqueStates = Array.from(new Set(sData?.map(i => i.address_state))).filter(Boolean) as string[];
+        setFilterOptions(prev => ({ ...prev, states: uniqueStates }));
+      }
+    } catch (e) {
+      console.error('Erro ao carregar estados:', e);
+    }
+
+    // Carregar Setores
+    try {
       const { data: sectorData, error: sectorError } = await supabase.rpc('get_distinct_values', { 
         col_name: 'sector',
         filter_col: null,
         filter_val: null
       });
       
-      if (stateError || sectorError) {
-        console.error('RPC Error:', stateError || sectorError);
-        // Fallback
-        const { data: sData } = await supabase.from('leads').select('address_state').not('address_state', 'is', null).order('address_state');
-        const uniqueStates = Array.from(new Set(sData?.map(i => i.address_state))).filter(Boolean) as string[];
-        
-        const { data: secData } = await supabase.from('leads').select('sector').not('sector', 'is', null).order('sector');
-        const uniqueSectors = Array.from(new Set(secData?.map(i => i.sector))).filter(Boolean) as string[];
-
-        setFilterOptions(prev => ({ ...prev, states: uniqueStates, sectors: uniqueSectors }));
+      if (!sectorError && sectorData && sectorData.length > 0) {
+        setFilterOptions(prev => ({ ...prev, sectors: sectorData.map((i: any) => i.value) }));
       } else {
-        setFilterOptions(prev => ({ 
-          ...prev, 
-          states: stateData.map((i: any) => i.value),
-          sectors: sectorData.map((i: any) => i.value)
-        }));
+        // Fallback robusto com os setores principais caso a query falhe ou demore
+        const fallbackSectors = [
+          'Agronegócio', 'Comércio e Varejo', 'Construção Civil', 'Educação', 
+          'Financeiro e Seguros', 'Imobiliário', 'Indústria', 'Lazer e Cultura', 
+          'Mineração', 'Saúde', 'Serviços Administrativos', 'Serviços Gerais', 
+          'Serviços Pessoais', 'Serviços Profissionais', 'Setor Público', 
+          'Tecnologia e Comunicação', 'Transporte e Logística', 'Turismo e Gastronomia', 
+          'Utilidades e Infraestrutura'
+        ];
+        setFilterOptions(prev => ({ ...prev, sectors: fallbackSectors }));
       }
-    } catch (error) {
-      console.error('Error fetching filter options:', error);
+    } catch (e) {
+      console.error('Erro ao carregar setores:', e);
     }
   };
 
