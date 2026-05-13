@@ -567,27 +567,31 @@ export function Leads() {
 
             <div>
               <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-3">Mercado de Atuação</label>
-              <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
-                {filterOptions.sectors.map((sector) => (
-                  <label key={sector} className="flex items-center gap-3 cursor-pointer group">
-                    <input 
-                      type="checkbox"
-                      checked={selectedSectors.includes(sector)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedSectors(prev => [...prev, sector]);
-                        } else {
-                          setSelectedSectors(prev => prev.filter(s => s !== sector));
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <div className={`w-4 h-4 rounded border ${selectedSectors.includes(sector) ? 'bg-primary border-primary' : 'border-white/10'} group-hover:border-primary/50 transition-colors flex items-center justify-center`}>
-                      {selectedSectors.includes(sector) && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                    </div>
-                    <span className={`text-[11px] ${selectedSectors.includes(sector) ? 'text-white font-medium' : 'text-zinc-400'} group-hover:text-white transition-colors`}>{sector}</span>
-                  </label>
-                ))}
+              <div className="space-y-2 max-h-52 overflow-y-auto pr-2 custom-scrollbar">
+                {filterOptions.sectors.length === 0 ? (
+                  <p className="text-[11px] text-zinc-600 italic">Carregando setores...</p>
+                ) : (
+                  filterOptions.sectors.map((sector) => (
+                    <label key={sector} className="flex items-center gap-3 cursor-pointer group">
+                      <input 
+                        type="checkbox"
+                        checked={selectedSectors.includes(sector)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedSectors(prev => [...prev, sector]);
+                          } else {
+                            setSelectedSectors(prev => prev.filter(s => s !== sector));
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <div className={`w-4 h-4 rounded border ${selectedSectors.includes(sector) ? 'bg-primary border-primary' : 'border-white/10'} group-hover:border-primary/50 transition-colors flex items-center justify-center`}>
+                        {selectedSectors.includes(sector) && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </div>
+                      <span className={`text-[11px] ${selectedSectors.includes(sector) ? 'text-white font-medium' : 'text-zinc-400'} group-hover:text-white transition-colors`}>{sector}</span>
+                    </label>
+                  ))
+                )}
               </div>
             </div>
 
