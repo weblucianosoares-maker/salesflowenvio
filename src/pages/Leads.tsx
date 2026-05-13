@@ -164,18 +164,38 @@ export function Leads() {
   };
 
   const fetchCities = async (state: string) => {
+    if (!state || state === 'Todos os Estados') return;
     try {
+      console.log('Buscando cidades para:', state);
       const { data, error } = await supabase.rpc('get_distinct_values', { 
         col_name: 'address_city',
         filter_col: 'address_state',
         filter_val: state
       });
       
-      if (error) throw error;
-      const uniqueCities = data.map((i: any) => i.value);
-      setFilterOptions(prev => ({ ...prev, cities: uniqueCities }));
-    } catch (error) {
+      if (error) {
+        console.error('Erro RPC Cidades:', error);
+        // Fallback para query normal se o RPC falhar
+        const { data: fallbackData } = await supabase
+          .from('leads')
+          .select('address_city')
+          .eq('address_state', state)
+          .not('address_city', 'is', null)
+          .limit(1000);
+        
+        const uniqueCities = Array.from(new Set(fallbackData?.map(i => i.address_city))).filter(Boolean) as string[];
+        setFilterOptions(prev => ({ ...prev, cities: uniqueCities }));
+        return;
+      }
+
+      if (data) {
+        const uniqueCities = data.map((i: any) => i.value).filter(Boolean);
+        console.log('Cidades encontradas:', uniqueCities.length);
+        setFilterOptions(prev => ({ ...prev, cities: uniqueCities }));
+      }
+    } catch (error: any) {
       console.error('Error fetching cities:', error);
+      alert('Erro ao carregar cidades: ' + (error.message || 'Erro desconhecido'));
     }
   };
 
