@@ -157,11 +157,20 @@ export function Leads() {
 
   const fetchInitialFilterOptions = async () => {
     try {
-      const { data: stateData } = await supabase.rpc('get_distinct_values', { col_name: 'address_state' });
-      const { data: sectorData } = await supabase.rpc('get_distinct_values', { col_name: 'sector' });
+      const { data: stateData, error: stateError } = await supabase.rpc('get_distinct_values', { 
+        col_name: 'address_state',
+        filter_col: null,
+        filter_val: null
+      });
+      const { data: sectorData, error: sectorError } = await supabase.rpc('get_distinct_values', { 
+        col_name: 'sector',
+        filter_col: null,
+        filter_val: null
+      });
       
-      // Se o RPC não existir, usamos uma query normal (menos eficiente mas funciona)
-      if (!stateData) {
+      if (stateError || sectorError) {
+        console.error('RPC Error:', stateError || sectorError);
+        // Fallback
         const { data: sData } = await supabase.from('leads').select('address_state').not('address_state', 'is', null).order('address_state');
         const uniqueStates = Array.from(new Set(sData?.map(i => i.address_state))).filter(Boolean) as string[];
         
