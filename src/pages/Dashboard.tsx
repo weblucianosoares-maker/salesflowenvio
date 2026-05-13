@@ -20,7 +20,7 @@ export function Dashboard() {
     try {
       const { count: totalLeads } = await supabase
         .from('leads')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'planned', head: true });
 
       const { count: activeLeads } = await supabase
         .from('leads')

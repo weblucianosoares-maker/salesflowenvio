@@ -291,7 +291,7 @@ export function Leads() {
     try {
       let query = supabase
         .from('leads')
-        .select('*', { count: 'exact' });
+        .select('*', { count: 'estimated' });
 
       if (searchTerm) {
         const cleanTerm = searchTerm.replace(/\D/g, '');
