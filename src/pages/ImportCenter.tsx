@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { CloudUpload, FileText, Search, Database, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../lib/supabase';
+import { getMarketFromCNAE } from '../utils/cnae';
 
 export function ImportCenter() {
   const [isImporting, setIsImporting] = useState(false);
@@ -104,6 +105,7 @@ export function ImportCenter() {
             cnae_description: row['Descrição do CNAE'] || row['Descrição CNAE'] || row['CNAE Descrição'] || (String(row['CNAE Principal'] || '').includes(' - ') ? String(row['CNAE Principal']).split(' - ')[1] : ''),
             secondary_cnaes: row['CNAEs Secundários'] || row['CNAE Secundário'] || row['CNAEs Secundarios'] || '',
             company_size: porte,
+            sector: row['Setor'] || row['Segmento'] || getMarketFromCNAE(row['CNAE Principal'] || row['CNAE'] || row['CNAE P']),
             capital_social: parseFloat(
               String(row['Capital Social da Empresa'] || row['Capital Soc'] || row['Capital Social'] || '0')
                 .replace(/\./g, '') // Remove todos os pontos de milhar
