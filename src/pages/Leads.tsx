@@ -894,10 +894,10 @@ export function Leads() {
       {selectedLead && viewMode === 'detail' && (
         <div className="fixed inset-0 z-[60] bg-background overflow-auto animate-in fade-in zoom-in duration-300">
           <div className="max-w-7xl mx-auto p-8 space-y-8">
-            <header className="flex items-center justify-between">
+            <header className="flex items-center justify-end">
               <button 
                 onClick={() => setViewMode('list')}
-                className="glass px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition-all"
+                className="fixed top-8 left-8 z-[70] bg-zinc-900/80 backdrop-blur-xl border border-white/10 px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition-all shadow-2xl"
               >
                 <X size={18} />
                 Fechar Ficha

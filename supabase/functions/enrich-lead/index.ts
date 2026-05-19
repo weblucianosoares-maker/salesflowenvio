@@ -37,6 +37,7 @@ Deno.serve(async (req) => {
     let searchResults = "";
 
     if (serperKey) {
+      // Fazemos uma busca limpa apenas com nome e cidade para acionar o Google Meu Negócio / Places
       const response = await fetch('https://google.serper.dev/search', {
         method: 'POST',
         headers: {
@@ -44,7 +45,9 @@ Deno.serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          q: `${companyName} ${city} site oficial redes sociais instagram linkedin`,
+          q: `${companyName} ${city}`,
+          gl: 'br',
+          hl: 'pt-br',
           num: 10
         }),
       });
@@ -61,22 +64,26 @@ Deno.serve(async (req) => {
 
     if (geminiKey) {
       const prompt = `
-        Com base nos resultados de busca abaixo para a empresa "${companyName}" em "${city}", extraia as seguintes informacoes em JSON:
+        Você é um assistente especialista em enriquecimento de dados B2B. 
+        Analise o JSON de resultados de busca do Google abaixo para a empresa "${companyName}" em "${city}".
+        ATENÇÃO: Procure ativamente na seção "places" ou "knowledgeGraph" do JSON para encontrar telefones e avaliações. Procure na seção "organic" para encontrar o site e redes sociais.
+
+        Extraia as seguintes informacoes em formato JSON:
         - website: URL do site oficial
         - instagram: URL do perfil no Instagram
         - linkedin: URL da pagina da empresa no LinkedIn
         - facebook: URL da pagina no Facebook
         - partner_linkedin: URL do LinkedIn do socio "${partnerName}"
-        - ai_summary: Um resumo de 2 frases sobre o que a empresa faz e sua presenca de mercado.
-        - enriched_phone: Numero de telefone atualizado encontrado no Google Meu Negocio ou site oficial (formate com DDD).
-        - enriched_email: E-mail de contato atualizado encontrado no site ou Google Meu Negocio.
-        - gmb_rating: Nota de avaliacao da empresa no Google (ex: "4.8").
+        - ai_summary: Um resumo de 2 frases sobre o que a empresa faz e sua presenca de mercado baseada nos resultados.
+        - enriched_phone: Numero de telefone atualizado. Priorize os telefones encontrados na seção "places" (formate com DDD).
+        - enriched_email: E-mail de contato atualizado encontrado nos snippets.
+        - gmb_rating: Nota de avaliacao da empresa no Google (ex: "4.8") encontrada em "places" ou "knowledgeGraph".
         - gmb_review_count: Quantidade de avaliacoes no Google (ex: "150").
 
-        Resultados de busca:
-        ${searchResults || "Nenhum resultado encontrado. Tente deduzir com base no nome."}
+        Resultados de busca JSON:
+        ${searchResults || "Nenhum resultado encontrado."}
 
-        Responda APENAS o JSON. Se nao encontrar algo, retorne null para o campo.
+        Responda APENAS o JSON válido. Se nao encontrar determinada informacao, retorne null para o respectivo campo.
       `;
 
       // Use gemini-flash-latest which is the supported fast model
