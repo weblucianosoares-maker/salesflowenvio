@@ -1060,65 +1060,7 @@ export function Leads() {
                   </div>
                 </div>
 
-                {selectedLead.ai_summary && (
-                  <div className="glass p-8 rounded-3xl bg-emerald-500/5 border-emerald-500/10">
-                    <h3 className="text-sm font-bold uppercase tracking-widest text-emerald-500 flex items-center gap-2 mb-4">
-                      <Sparkles size={16} />
-                      Resumo Estratégico da IA
-                    </h3>
-                    <p className="text-sm text-zinc-300 leading-relaxed italic">
-                      "{selectedLead.ai_summary}"
-                    </p>
-                  </div>
-                )}
 
-                {(selectedLead.enriched_phone || selectedLead.enriched_email || selectedLead.gmb_rating) && (
-                  <div className="glass p-8 rounded-3xl bg-blue-500/5 border-blue-500/10">
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-sm font-bold uppercase tracking-widest text-blue-500 flex items-center gap-2">
-                        <Globe size={16} />
-                        Dados da Web (Google/Site)
-                      </h3>
-                      {selectedLead.gmb_rating && (
-                        <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded border border-white/10">
-                          <span className="text-yellow-500 text-sm">★</span>
-                          <span className="text-xs font-bold text-white">{selectedLead.gmb_rating}</span>
-                          <span className="text-[10px] text-zinc-500">({selectedLead.gmb_review_count || 0})</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-4">
-                      {selectedLead.enriched_phone && (
-                        <div className="bg-white/[0.03] p-4 rounded-2xl">
-                          <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">Telefone Encontrado na Web</p>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-white">{selectedLead.enriched_phone}</span>
-                            <a href={`tel:${selectedLead.enriched_phone.replace(/\D/g, '')}`} className="text-[10px] font-bold text-primary hover:underline">Ligar</a>
-                          </div>
-                        </div>
-                      )}
-                      {selectedLead.enriched_email && (
-                        <div className="bg-white/[0.03] p-4 rounded-2xl">
-                          <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">E-mail Encontrado na Web</p>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-white">{selectedLead.enriched_email}</span>
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(selectedLead.enriched_email);
-                                alert('E-mail copiado!');
-                              }}
-                              className="text-[10px] font-bold text-primary hover:underline"
-                            >
-                              Copiar
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
 
                 {/* Histórico e Anotações movido para cá */}
                 <div className="glass p-8 rounded-3xl flex flex-col h-full min-h-[500px]">
@@ -1414,6 +1356,113 @@ export function Leads() {
                     Agendar Reunião
                   </button>
                 </div>
+
+                {/* Enriquecimento com IA - Section */}
+                {(selectedLead.ai_summary || selectedLead.enriched_phone || selectedLead.enriched_email || selectedLead.gmb_rating || selectedLead.instagram || selectedLead.linkedin || selectedLead.website) && (
+                  <div className="mt-12">
+                    <h3 className="text-xl font-bold mb-6 flex items-center gap-3 text-emerald-500">
+                      <Sparkles size={24} />
+                      Enriquecimento com IA & Web
+                    </h3>
+                    
+                    <div className="glass p-8 rounded-3xl bg-emerald-500/5 border-emerald-500/10 space-y-8">
+                      {selectedLead.ai_summary && (
+                        <div>
+                          <p className="text-[10px] font-bold text-emerald-500/70 uppercase tracking-widest mb-3">Resumo Estratégico (IA)</p>
+                          <p className="text-base text-white/90 leading-relaxed italic border-l-2 border-emerald-500/30 pl-4">
+                            "{selectedLead.ai_summary}"
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Contatos Encontrados */}
+                        <div className="space-y-4">
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Contatos Encontrados (Google/Site)</p>
+                          
+                          {selectedLead.enriched_phone && (
+                            <div className="bg-white/[0.03] p-4 rounded-2xl flex items-center justify-between border border-white/5 hover:border-emerald-500/30 transition-colors">
+                              <div>
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">Telefone</p>
+                                <span className="text-sm font-medium text-white">{selectedLead.enriched_phone}</span>
+                              </div>
+                              <a href={`tel:${selectedLead.enriched_phone.replace(/\D/g, '')}`} className="text-xs font-bold text-emerald-500 bg-emerald-500/10 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20">Ligar</a>
+                            </div>
+                          )}
+
+                          {selectedLead.enriched_email && (
+                            <div className="bg-white/[0.03] p-4 rounded-2xl flex items-center justify-between border border-white/5 hover:border-emerald-500/30 transition-colors">
+                              <div>
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">E-mail</p>
+                                <span className="text-sm font-medium text-white">{selectedLead.enriched_email}</span>
+                              </div>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(selectedLead.enriched_email);
+                                  alert('E-mail copiado!');
+                                }}
+                                className="text-xs font-bold text-emerald-500 bg-emerald-500/10 px-3 py-1.5 rounded-lg hover:bg-emerald-500/20"
+                              >
+                                Copiar
+                              </button>
+                            </div>
+                          )}
+                          
+                          {(!selectedLead.enriched_phone && !selectedLead.enriched_email) && (
+                            <p className="text-sm text-zinc-500 italic">Nenhum novo contato encontrado na web.</p>
+                          )}
+                        </div>
+
+                        {/* Presença Digital */}
+                        <div className="space-y-4">
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Presença Digital</p>
+                          
+                          {selectedLead.gmb_rating && (
+                            <div className="bg-white/[0.03] p-4 rounded-2xl flex items-center justify-between border border-white/5">
+                              <div>
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">Avaliação Google Meu Negócio</p>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-yellow-500 text-lg">★</span>
+                                  <span className="text-sm font-bold text-white">{selectedLead.gmb_rating}</span>
+                                  <span className="text-xs text-zinc-500">({selectedLead.gmb_review_count || 0} reviews)</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {(selectedLead.instagram || selectedLead.linkedin || selectedLead.facebook || selectedLead.website) && (
+                            <div className="bg-white/[0.03] p-4 rounded-2xl border border-white/5">
+                              <p className="text-[10px] font-bold text-zinc-500 uppercase mb-3">Links e Redes Sociais</p>
+                              <div className="flex flex-wrap gap-3">
+                                {selectedLead.website && (
+                                  <a href={selectedLead.website.startsWith('http') ? selectedLead.website : `https://${selectedLead.website}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-3 py-2 bg-white/5 text-white text-xs font-medium rounded-lg hover:bg-white/10 transition-all">
+                                    <Globe size={14} className="text-zinc-400" /> Site
+                                  </a>
+                                )}
+                                {selectedLead.instagram && (
+                                  <a href={selectedLead.instagram} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-3 py-2 bg-pink-500/10 text-pink-500 text-xs font-medium rounded-lg hover:bg-pink-500/20 transition-all">
+                                    <Instagram size={14} /> Instagram
+                                  </a>
+                                )}
+                                {selectedLead.linkedin && (
+                                  <a href={selectedLead.linkedin} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 text-blue-500 text-xs font-medium rounded-lg hover:bg-blue-500/20 transition-all">
+                                    <Linkedin size={14} /> LinkedIn
+                                  </a>
+                                )}
+                                {selectedLead.facebook && (
+                                  <a href={selectedLead.facebook} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-3 py-2 bg-blue-600/10 text-blue-600 text-xs font-medium rounded-lg hover:bg-blue-600/20 transition-all">
+                                    <Facebook size={14} /> Facebook
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>
