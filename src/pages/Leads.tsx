@@ -328,6 +328,42 @@ export function Leads() {
     }
   };
 
+  const handleStartApproach = async () => {
+    if (!selectedLead) return;
+    
+    try {
+      const now = new Date().toISOString();
+      const { error: updateError } = await supabase
+        .from('leads')
+        .update({ status: 'Em Abordagem', last_contact_date: now })
+        .eq('id', selectedLead.id);
+        
+      if (updateError) throw updateError;
+      
+      const { data: activityData, error: activityError } = await supabase
+        .from('lead_activities')
+        .insert({
+          lead_id: selectedLead.id,
+          activity_type: 'note',
+          content: 'Abordagem comercial iniciada.'
+        })
+        .select()
+        .single();
+        
+      if (activityError) throw activityError;
+      
+      const updatedLead = { ...selectedLead, status: 'Em Abordagem', last_contact_date: now };
+      setSelectedLead(updatedLead);
+      setLeads(prev => prev.map(l => l.id === selectedLead.id ? updatedLead : l));
+      setActivities(prev => [activityData, ...prev]);
+      
+      alert('Abordagem comercial iniciada!');
+    } catch (error) {
+      console.error('Erro ao iniciar abordagem:', error);
+      alert('Falha ao iniciar abordagem comercial.');
+    }
+  };
+
   const fetchLeads = async () => {
     setIsLoading(true);
     try {
@@ -738,6 +774,7 @@ export function Leads() {
                   <th className="px-6 py-5">Localização</th>
                   <th className="px-6 py-5">CNAE / Setor</th>
                   <th className="px-6 py-5">Status</th>
+                  <th className="px-6 py-5">Último Contato</th>
                   <th className="px-6 py-5"></th>
                 </tr>
               </thead>
@@ -788,6 +825,11 @@ export function Leads() {
                         'bg-amber-500/10 text-amber-500'
                       }`}>
                         {lead.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5">
+                      <span className="text-xs text-zinc-400 font-medium">
+                        {lead.last_contact_date ? new Date(lead.last_contact_date).toLocaleDateString('pt-BR') : '---'}
                       </span>
                     </td>
                     <td className="px-6 py-5 text-right">
@@ -1362,7 +1404,10 @@ export function Leads() {
                 </div>
 
                 <div className="flex gap-4">
-                  <button className="flex-1 bg-primary text-white py-4 rounded-2xl font-bold hover:brightness-110 transition-all text-lg shadow-xl shadow-primary/20">
+                  <button 
+                    onClick={handleStartApproach}
+                    className="flex-1 bg-primary text-white py-4 rounded-2xl font-bold hover:brightness-110 transition-all text-lg shadow-xl shadow-primary/20"
+                  >
                     Iniciar Abordagem Comercial
                   </button>
                   <button className="glass px-8 py-4 rounded-2xl font-bold hover:bg-white/5 transition-all">
