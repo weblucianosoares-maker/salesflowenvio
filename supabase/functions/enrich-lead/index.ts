@@ -66,6 +66,10 @@ Deno.serve(async (req) => {
         - facebook: URL da página no Facebook
         - partner_linkedin: URL do LinkedIn do sócio "${partnerName}"
         - ai_summary: Um resumo de 2 frases sobre o que a empresa faz e sua presença de mercado.
+        - enriched_phone: Número de telefone atualizado encontrado no Google Meu Negócio ou site oficial (formate com DDD).
+        - enriched_email: E-mail de contato atualizado encontrado no site ou Google Meu Negócio.
+        - gmb_rating: Nota de avaliação da empresa no Google (ex: "4.8").
+        - gmb_review_count: Quantidade de avaliações no Google (ex: "150").
 
         Resultados de busca:
         ${searchResults || "Nenhum resultado encontrado. Tente deduzir com base no nome."}

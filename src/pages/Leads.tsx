@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Filter, Search, Plus, MoreHorizontal, MapPin, Building2, Briefcase, Loader2, Download, Trash2, X, Phone, Mail, Globe, Database, MessageSquare, Send, Clock, History, Sparkles, Linkedin, Instagram, Facebook } from 'lucide-react';
+import { Filter, Search, Plus, MoreHorizontal, MapPin, Building2, Briefcase, Loader2, Download, Trash2, X, Phone, Mail, Globe, Database, MessageSquare, Send, Clock, History, Sparkles, Linkedin, Instagram, Facebook, AlertTriangle, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { DiscoveryModal } from '../components/DiscoveryModal';
 import { getMarketFromCNAE } from '../utils/cnae';
@@ -264,11 +264,39 @@ export function Leads() {
 
       setActivities(prev => [data, ...prev]);
       setNewNote('');
+      
+      const now = new Date().toISOString();
+      await supabase.from('leads').update({ last_contact_date: now }).eq('id', selectedLead.id);
+      setSelectedLead((prev: any) => ({ ...prev, last_contact_date: now }));
+      setLeads(prev => prev.map(l => l.id === selectedLead.id ? { ...l, last_contact_date: now } : l));
     } catch (error) {
       console.error('Erro ao salvar nota:', error);
       alert('Falha ao salvar nota.');
     } finally {
       setIsSavingNote(false);
+    }
+  };
+
+  const handleTogglePhoneInvalid = async (idx: number) => {
+    if (!selectedLead) return;
+    const field = idx === 0 ? 'phone_invalid' : 'phone_2_invalid';
+    const currentValue = selectedLead[field];
+    const now = new Date().toISOString();
+    
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .update({ [field]: !currentValue, phone_updated_at: now })
+        .eq('id', selectedLead.id);
+
+      if (error) throw error;
+
+      const updatedLead = { ...selectedLead, [field]: !currentValue, phone_updated_at: now };
+      setSelectedLead(updatedLead);
+      setLeads(prev => prev.map(l => l.id === selectedLead.id ? updatedLead : l));
+    } catch (error) {
+      console.error('Erro ao atualizar status do telefone:', error);
+      alert('Falha ao atualizar status do telefone.');
     }
   };
 
@@ -888,39 +916,65 @@ export function Leads() {
                   <div className="space-y-4">
                     <div className="bg-white/[0.03] p-4 rounded-2xl">
                       <p className="text-[10px] font-bold text-zinc-600 uppercase mb-2">Telefones de Contato</p>
-                      {[selectedLead.phone, selectedLead.phone_2].filter(Boolean).map((p, idx) => {
+                      {[selectedLead.phone, selectedLead.phone_2].map((p, idx) => {
+                        if (!p) return null;
                         const cleanPhone = p.replace(/\D/g, '');
                         const isMobile = cleanPhone.length === 11 && cleanPhone[2] === '9';
+                        const isInvalid = idx === 0 ? selectedLead.phone_invalid : selectedLead.phone_2_invalid;
                         return (
-                          <div key={idx} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                            <div className="flex items-center gap-2">
-                              {isMobile ? (
-                                <div className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-500">
-                                  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766 0-3.18-2.587-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793 0-.853.448-1.271.607-1.444.159-.173.346-.217.462-.217l.332.006c.118.005.243-.009.344.246.127.322.427 1.045.466 1.129.04.083.067.18.012.298-.054.117-.082.19-.163.284-.081.095-.164.19-.235.25-.088.075-.18.156-.076.331.103.175.459.758.985 1.229.676.605 1.243.792 1.417.878.173.088.274.072.376-.045.101-.116.44-.512.557-.686.117-.174.232-.146.39-.086.157.058 1.002.474 1.175.56.173.088.289.131.332.203.043.072.043.419-.101.824z"/></svg>
-                                </div>
-                              ) : (
-                                <Phone size={14} className="text-primary" />
-                              )}
-                              <span className="text-sm font-medium">{p}</span>
-                            </div>
-                            <div className="flex gap-3">
-                              {isMobile && (
-                                <a 
-                                  href={`https://wa.me/55${cleanPhone}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-[10px] font-bold text-emerald-500 hover:underline"
+                          <div key={idx} className="flex flex-col py-3 border-b border-white/5 last:border-0">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                {isMobile ? (
+                                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${isInvalid ? 'bg-red-500/20 text-red-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766 0-3.18-2.587-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793 0-.853.448-1.271.607-1.444.159-.173.346-.217.462-.217l.332.006c.118.005.243-.009.344.246.127.322.427 1.045.466 1.129.04.083.067.18.012.298-.054.117-.082.19-.163.284-.081.095-.164.19-.235.25-.088.075-.18.156-.076.331.103.175.459.758.985 1.229.676.605 1.243.792 1.417.878.173.088.274.072.376-.045.101-.116.44-.512.557-.686.117-.174.232-.146.39-.086.157.058 1.002.474 1.175.56.173.088.289.131.332.203.043.072.043.419-.101.824z"/></svg>
+                                  </div>
+                                ) : (
+                                  <Phone size={14} className={isInvalid ? 'text-red-500' : 'text-primary'} />
+                                )}
+                                <span className={`text-sm font-medium ${isInvalid ? 'line-through text-zinc-500' : ''}`}>{p}</span>
+                              </div>
+                              <div className="flex gap-3 items-center">
+                                {!isInvalid && isMobile && (
+                                  <a 
+                                    href={`https://wa.me/55${cleanPhone}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[10px] font-bold text-emerald-500 hover:underline"
+                                  >
+                                    WhatsApp
+                                  </a>
+                                )}
+                                {!isInvalid && (
+                                  <a href={`tel:${cleanPhone}`} className="text-[10px] font-bold text-primary hover:underline">Ligar</a>
+                                )}
+                                <button 
+                                  onClick={() => handleTogglePhoneInvalid(idx)}
+                                  className={`text-[10px] font-bold flex items-center gap-1 ${isInvalid ? 'text-zinc-400 hover:text-white' : 'text-red-500 hover:text-red-400'}`}
                                 >
-                                  WhatsApp
-                                </a>
-                              )}
-                              <a href={`tel:${cleanPhone}`} className="text-[10px] font-bold text-primary hover:underline">Ligar</a>
+                                  {isInvalid ? <CheckCircle size={12} /> : <AlertTriangle size={12} />}
+                                  {isInvalid ? 'Marcar Válido' : 'Marcar Inválido'}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );
                       })}
                       {![selectedLead.phone, selectedLead.phone_2].filter(Boolean).length && (
                         <p className="text-sm text-zinc-500 italic">Nenhum telefone informado</p>
+                      )}
+                      
+                      {([selectedLead.phone, selectedLead.phone_2].filter(Boolean).length > 0) && (
+                        <div className="mt-4 p-3 bg-white/[0.02] rounded-xl border border-white/5 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Atualização no Sistema</span>
+                            <span className="text-xs font-medium text-white">{formatDateBR(selectedLead.phone_updated_at) || 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Cadastro na Receita</span>
+                            <span className="text-xs font-medium text-white">{formatDateBR(selectedLead.last_registration_update) || 'N/A'}</span>
+                          </div>
+                        </div>
                       )}
                     </div>
                     <div>
@@ -976,12 +1030,68 @@ export function Leads() {
                   </div>
                 )}
 
+                {(selectedLead.enriched_phone || selectedLead.enriched_email || selectedLead.gmb_rating) && (
+                  <div className="glass p-8 rounded-3xl bg-blue-500/5 border-blue-500/10">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-blue-500 flex items-center gap-2">
+                        <Globe size={16} />
+                        Dados da Web (Google/Site)
+                      </h3>
+                      {selectedLead.gmb_rating && (
+                        <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded border border-white/10">
+                          <span className="text-yellow-500 text-sm">★</span>
+                          <span className="text-xs font-bold text-white">{selectedLead.gmb_rating}</span>
+                          <span className="text-[10px] text-zinc-500">({selectedLead.gmb_review_count || 0})</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {selectedLead.enriched_phone && (
+                        <div className="bg-white/[0.03] p-4 rounded-2xl">
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">Telefone Encontrado na Web</p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-white">{selectedLead.enriched_phone}</span>
+                            <a href={`tel:${selectedLead.enriched_phone.replace(/\D/g, '')}`} className="text-[10px] font-bold text-primary hover:underline">Ligar</a>
+                          </div>
+                        </div>
+                      )}
+                      {selectedLead.enriched_email && (
+                        <div className="bg-white/[0.03] p-4 rounded-2xl">
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">E-mail Encontrado na Web</p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-white">{selectedLead.enriched_email}</span>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(selectedLead.enriched_email);
+                                alert('E-mail copiado!');
+                              }}
+                              className="text-[10px] font-bold text-primary hover:underline"
+                            >
+                              Copiar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Histórico e Anotações movido para cá */}
                 <div className="glass p-8 rounded-3xl flex flex-col h-full min-h-[500px]">
-                  <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-500 flex items-center gap-2 mb-6">
-                    <History size={16} className="text-primary" />
-                    Histórico de Relacionamento
-                  </h3>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+                      <History size={16} className="text-primary" />
+                      Histórico de Relacionamento
+                    </h3>
+                    {selectedLead.last_contact_date && (
+                      <div className="bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mr-2">Último Contato:</span>
+                        <span className="text-xs font-medium text-white">{new Date(selectedLead.last_contact_date).toLocaleDateString('pt-BR')}</span>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Add Note Form */}
                   <div className="mb-8 space-y-3">
