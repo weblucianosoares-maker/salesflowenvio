@@ -26,14 +26,13 @@ Deno.serve(async (req) => {
       .eq('id', leadId)
       .single();
 
-    if (leadError || !lead) throw new Error('Lead não encontrado');
+    if (leadError || !lead) throw new Error('Lead nao encontrado');
 
     const companyName = lead.name || lead.nome_cliente;
     const city = lead.address_city || '';
     const partnerName = lead.partner_name || '';
 
     // 2. Realizar busca (Simulando busca via Serper.dev)
-    // Nota: O usuário deve configurar a variável de ambiente SERPER_API_KEY
     const serperKey = Deno.env.get('SERPER_API_KEY');
     let searchResults = "";
 
@@ -56,28 +55,32 @@ Deno.serve(async (req) => {
     // 3. Usar Gemini para processar os resultados
     const geminiKey = Deno.env.get('GEMINI_API_KEY');
     let enrichedData = {};
+    let textResponse = null;
+    let geminiRawData = null;
+    let aiError = null;
 
     if (geminiKey) {
       const prompt = `
-        Com base nos resultados de busca abaixo para a empresa "${companyName}" em "${city}", extraia as seguintes informações em JSON:
+        Com base nos resultados de busca abaixo para a empresa "${companyName}" em "${city}", extraia as seguintes informacoes em JSON:
         - website: URL do site oficial
         - instagram: URL do perfil no Instagram
-        - linkedin: URL da página da empresa no LinkedIn
-        - facebook: URL da página no Facebook
-        - partner_linkedin: URL do LinkedIn do sócio "${partnerName}"
-        - ai_summary: Um resumo de 2 frases sobre o que a empresa faz e sua presença de mercado.
-        - enriched_phone: Número de telefone atualizado encontrado no Google Meu Negócio ou site oficial (formate com DDD).
-        - enriched_email: E-mail de contato atualizado encontrado no site ou Google Meu Negócio.
-        - gmb_rating: Nota de avaliação da empresa no Google (ex: "4.8").
-        - gmb_review_count: Quantidade de avaliações no Google (ex: "150").
+        - linkedin: URL da pagina da empresa no LinkedIn
+        - facebook: URL da pagina no Facebook
+        - partner_linkedin: URL do LinkedIn do socio "${partnerName}"
+        - ai_summary: Um resumo de 2 frases sobre o que a empresa faz e sua presenca de mercado.
+        - enriched_phone: Numero de telefone atualizado encontrado no Google Meu Negocio ou site oficial (formate com DDD).
+        - enriched_email: E-mail de contato atualizado encontrado no site ou Google Meu Negocio.
+        - gmb_rating: Nota de avaliacao da empresa no Google (ex: "4.8").
+        - gmb_review_count: Quantidade de avaliacoes no Google (ex: "150").
 
         Resultados de busca:
         ${searchResults || "Nenhum resultado encontrado. Tente deduzir com base no nome."}
 
-        Responda APENAS o JSON. Se não encontrar algo, retorne null para o campo.
+        Responda APENAS o JSON. Se nao encontrar algo, retorne null para o campo.
       `;
 
-      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiKey}`, {
+      // Use gemini-flash-latest which is the supported fast model
+      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${geminiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -85,20 +88,48 @@ Deno.serve(async (req) => {
         }),
       });
 
-      const geminiData = await geminiRes.json();
-      const textResponse = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-      enrichedData = JSON.parse(textResponse.replace(/```json|```/g, ''));
+      geminiRawData = await geminiRes.json();
+      
+      if (geminiRawData.error) {
+        aiError = geminiRawData.error.message;
+        console.error("Gemini Error:", aiError);
+        
+        // Fetch list of available models to debug
+        const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${geminiKey}`);
+        const modelsData = await modelsRes.json();
+        const availableModels = modelsData.models ? modelsData.models.map(m => m.name).join(", ") : "Nenhum";
+        aiError += ` | Modelos permitidos: ${availableModels}`;
+      } else {
+        textResponse = geminiRawData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        try {
+          enrichedData = JSON.parse(textResponse.replace(/```json|```/g, ''));
+        } catch (e) {
+          console.error("Failed to parse Gemini response:", textResponse);
+          aiError = "Failed to parse JSON response from AI.";
+        }
+      }
     }
 
-    // 4. Atualizar o lead
-    const { error: updateError } = await supabase
-      .from('leads')
-      .update(enrichedData)
-      .eq('id', leadId);
+    // Se houve dados extraidos validos e o JSON nao estiver vazio
+    if (Object.keys(enrichedData).length > 0) {
+      const { error: updateError } = await supabase
+        .from('leads')
+        .update(enrichedData)
+        .eq('id', leadId);
 
-    if (updateError) throw updateError;
+      if (updateError) throw updateError;
+    } else {
+      if (aiError) {
+        throw new Error(`Erro na IA: ${aiError}`);
+      } else {
+        throw new Error("A IA nao encontrou informacoes novas para este lead.");
+      }
+    }
 
-    return new Response(JSON.stringify({ success: true, lead: enrichedData }), {
+    return new Response(JSON.stringify({ 
+      success: true, 
+      lead: enrichedData 
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
