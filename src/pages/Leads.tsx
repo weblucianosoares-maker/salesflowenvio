@@ -374,10 +374,11 @@ export function Leads() {
       if (searchTerm) {
         const cleanTerm = searchTerm.replace(/\D/g, '');
         if (cleanTerm && /^\d+$/.test(cleanTerm)) {
-          // Se for numérico, busca pelo CNPJ limpo OU pelo termo original nos outros campos
-          query = query.or(`cnpj.ilike.%${cleanTerm}%,name.ilike.%${searchTerm}%,nome_cliente.ilike.%${searchTerm}%,address_city.ilike.%${searchTerm}%,sector.ilike.%${searchTerm}%,cnae.ilike.%${searchTerm}%`);
+          // Se for numérico, busca pelo CNPJ limpo
+          query = query.ilike('cnpj', `%${cleanTerm}%`);
         } else {
-          query = query.or(`cnpj.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%,nome_cliente.ilike.%${searchTerm}%,address_city.ilike.%${searchTerm}%,sector.ilike.%${searchTerm}%,cnae_description.ilike.%${searchTerm}%`);
+          // Busca por nome OU nome_cliente (mantém AND com outros filtros)
+          query = query.or(`name.ilike.%${searchTerm}%,nome_cliente.ilike.%${searchTerm}%`);
         }
       }
 
